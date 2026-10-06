@@ -1,0 +1,39 @@
+@use '@angular/material' as mat;
+
+// Reset
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-2: #1c2128;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #00BCD4;
+  --accent-h: #00acc1;
+  --accent-lite: rgba(0, 188, 212, .12);
+  --danger: #f85149;
+  --warning: #e3b341;
+  --success: #3fb950;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: 'Roboto', 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
