@@ -15,8 +15,7 @@ yarn-error.log
 .env
 .env.*
 !.env.example
-/src/environments/environment.ts
-/src/environments/environment.production.ts
+/src/environments/environment*.ts
 !/src/environments/environment.example.ts
 
 # Nested repository and local MCP configuration
