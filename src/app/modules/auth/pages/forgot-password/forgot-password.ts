@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { environment } from '../../../../../environments/environment';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-forgot-password',
@@ -21,7 +22,12 @@ export class ForgotPassword {
   error = '';
   mensaje = '';
 
-  constructor(private fb: FormBuilder, private http: HttpClient, private router: Router) {
+  constructor(
+    private fb: FormBuilder,
+    private http: HttpClient,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+  ) {
     this.form = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(4)]],
     });
@@ -35,9 +41,13 @@ export class ForgotPassword {
     this.http.post<any>(
       `${environment.apiUrl}/auth/forgot-password`,
       { username: this.form.value.username }
+    ).pipe(
+      finalize(() => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }),
     ).subscribe({
       next: (res) => {
-        this.loading = false;
         if (res.respuesta === 'success') {
           this.enviado = true;
           this.mensaje = res.mensaje;
@@ -52,7 +62,6 @@ export class ForgotPassword {
         }
       },
       error: (err) => {
-        this.loading = false;
         this.error = err?.error?.mensaje ?? 'Error de conexión';
       },
     });

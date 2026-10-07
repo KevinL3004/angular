@@ -1,10 +1,11 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth';
+import { finalize } from 'rxjs';
 
 @Component({
   imports: [CommonModule, ReactiveFormsModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
@@ -22,6 +23,7 @@ export class Login {
     private fb: FormBuilder,
     private auth: AuthService,
     private router: Router,
+    private cdr: ChangeDetectorRef,
   ) {
     // Si ya tiene sesión, redirigir
     if (this.auth.loggedIn()) this.router.navigate(['/dashboard']);
@@ -39,9 +41,13 @@ export class Login {
 
     const { username, password } = this.form.value;
 
-    this.auth.login(username, password).subscribe({
-      next: (res) => {
+    this.auth.login(username, password).pipe(
+      finalize(() => {
         this.loading = false;
+        this.cdr.markForCheck();
+      }),
+    ).subscribe({
+      next: (res) => {
         if (res.respuesta === 'success') {
           this.router.navigate(['/dashboard']);
         } else {
@@ -49,7 +55,6 @@ export class Login {
         }
       },
       error: (err) => {
-        this.loading = false;
         this.error = err?.error?.mensaje ?? 'Error de conexión con el servidor';
       },
     });

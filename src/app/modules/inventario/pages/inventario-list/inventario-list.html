@@ -1,1 +1,103 @@
-<p>inventario-list works!</p>
+<div class="page">
+    <app-page-header title="Inventario" subtitle="Existencias en bodega por escuela"></app-page-header>
+
+    <!-- Selección de escuela -->
+    <div class="card filters-row">
+        <div class="form-field" style="margin:0;flex:1">
+            <label>Escuela</label>
+            <select [(ngModel)]="escuelaId" (change)="cargar()">
+                <option *ngFor="let e of escuelas" [value]="e.id">{{ e.nombre }}</option>
+            </select>
+        </div>
+        <div class="form-field" style="margin:0;flex:1">
+            <label>Buscar alimento</label>
+            <input type="text" [(ngModel)]="filtro" placeholder="Nombre del alimento...">
+        </div>
+    </div>
+
+    <app-loading *ngIf="loading"></app-loading>
+
+    <div class="card" *ngIf="!loading">
+        <app-empty-state *ngIf="!inventario.length" icon="inventory_2" title="Sin registros"
+            subtitle="No hay alimentos registrados en el inventario de esta escuela">
+        </app-empty-state>
+
+        <div class="table-wrap" *ngIf="inventario.length">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Alimento</th>
+                        <th>Grupo</th>
+                        <th>Existencia</th>
+                        <th>Stock mínimo</th>
+                        <th>Nivel</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let item of inventarioFiltrado">
+                        <td class="fw-600">{{ item.alimento?.nombre }}</td>
+                        <td>{{ item.alimento?.grupo }}</td>
+                        <td>{{ item.existenciaActual }} {{ item.alimento?.unidadInventario }}</td>
+                        <td>{{ item.stockMinimo }} {{ item.alimento?.unidadInventario }}</td>
+                        <td>
+                            <div class="nivel-bar">
+                                <div class="nivel-fill" [style.width.%]="pct(item)"
+                                    [class.green]="nivelClass(item)==='green'"
+                                    [class.yellow]="nivelClass(item)==='yellow'" [class.red]="nivelClass(item)==='red'">
+                                </div>
+                            </div>
+                            <span class="nivel-pct">{{ pct(item) }}%</span>
+                        </td>
+                        <td>
+                            <span class="badge" [ngClass]="nivelClass(item)">
+                                {{ nivelLabel(item) }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn-secondary" (click)="abrirModal(item)">
+                                <mat-icon>add</mat-icon> Movimiento
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal movimiento -->
+<div class="modal-bg" *ngIf="showModal" (click)="showModal=false">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+            <h3>Registrar movimiento</h3>
+            <button class="modal-close" (click)="showModal=false">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row cols-2">
+                <div class="form-field">
+                    <label>Tipo</label>
+                    <select [(ngModel)]="mov.tipo">
+                        <option value="ingreso">Ingreso</option>
+                        <option value="salida">Salida</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Cantidad</label>
+                    <input type="number" [(ngModel)]="mov.cantidad" min="0.001" step="0.5">
+                </div>
+            </div>
+            <div class="form-field">
+                <label>Motivo</label>
+                <input type="text" [(ngModel)]="mov.motivo" placeholder="Ej. Compra quincenal">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" (click)="showModal=false">Cancelar</button>
+            <button class="btn-primary" (click)="guardarMov()">Guardar</button>
+        </div>
+    </div>
+</div>

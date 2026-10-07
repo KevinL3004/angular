@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { environment } from '../../../../../environments/environment';
+import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-reset-password',
@@ -25,7 +26,12 @@ export class ResetPassword {
   private username = sessionStorage.getItem('reset_username') ?? '';
   private token = sessionStorage.getItem('reset_token') ?? '';
 
-  constructor(private fb: FormBuilder, private http: HttpClient, private router: Router) {
+  constructor(
+    private fb: FormBuilder,
+    private http: HttpClient,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+  ) {
     // Si no hay token en sesión, redirigir
     if (!this.token) this.router.navigate(['/auth/forgot-password']);
 
@@ -51,9 +57,13 @@ export class ResetPassword {
     this.http.post<any>(
       `${environment.apiUrl}/auth/reset-password`,
       { resetToken, newPassword: this.form.value.newPassword }
+    ).pipe(
+      finalize(() => {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }),
     ).subscribe({
       next: (res) => {
-        this.loading = false;
         if (res.respuesta === 'success') {
           this.exito = true;
           sessionStorage.removeItem('reset_username');
@@ -64,7 +74,6 @@ export class ResetPassword {
         }
       },
       error: (err) => {
-        this.loading = false;
         this.error = err?.error?.mensaje ?? 'Token inválido o expirado';
       },
     });

@@ -1,1 +1,53 @@
-<p>user-list works!</p>
+<div class="page">
+	<app-page-header title="Usuarios" subtitle="Cuentas registradas en el sistema">
+		<button class="btn-secondary refresh-button" type="button" (click)="cargar()" [disabled]="loading" aria-label="Actualizar usuarios" title="Actualizar">
+			<mat-icon>refresh</mat-icon>
+		</button>
+	</app-page-header>
+
+	<app-loading *ngIf="loading"></app-loading>
+
+	<div class="card" *ngIf="!loading">
+		<div class="alert danger" *ngIf="error">
+			<mat-icon>error_outline</mat-icon>
+			<span>{{ error }}</span>
+			<button class="btn-secondary" type="button" (click)="cargar()">Reintentar</button>
+		</div>
+
+		<app-empty-state
+			*ngIf="!usuarios.length && !error"
+			icon="group"
+			title="Sin usuarios registrados"
+			subtitle="Aún no hay usuarios disponibles">
+		</app-empty-state>
+
+		<div class="table-wrap" *ngIf="usuarios.length">
+			<table>
+				<thead>
+					<tr>
+						<th>Usuario</th>
+						<th>Nombre completo</th>
+						<th>Correo</th>
+						<th>Rol</th>
+						<th>Estado</th>
+						<th>Último acceso</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr *ngFor="let usuario of usuarios">
+						<td><code>{{ usuario.username }}</code></td>
+						<td class="fw-600">{{ usuario.nombreCompleto }}</td>
+						<td>{{ usuario.correo || 'Sin correo' }}</td>
+						<td>{{ rolLabels[usuario.rol] || usuario.rol }}</td>
+						<td>
+							<span class="badge" [class.green]="usuario.activo" [class.red]="!usuario.activo">
+								{{ usuario.activo ? 'Activo' : 'Inactivo' }}
+							</span>
+						</td>
+						<td>{{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date:'short') : 'Nunca' }}</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
