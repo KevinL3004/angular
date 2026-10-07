@@ -1,1 +1,18 @@
-<p>sidebar works!</p>
+<aside class="sidebar">
+
+    <div class="sidebar-brand">
+        <div class="brand-icon">SI</div>
+        <div>
+            <div class="brand-name">SIPAE</div>
+            <div class="brand-sub">Programa Alimentario</div>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a *ngFor="let item of navItems()" [routerLink]="item.route" routerLinkActive="active" class="nav-link">
+            <mat-icon>{{ item.icon }}</mat-icon>
+            <span>{{ item.label }}</span>
+        </a>
+    </nav>
+
+</aside>

@@ -1,1 +1,34 @@
-<p>home works!</p>
+<div class="page">
+
+    <!-- Bienvenida -->
+    <div class="welcome-card">
+        <div class="welcome-text">
+            <h1>Bienvenido, {{ usuario()?.nombreCompleto }}</h1>
+            <p>{{ rolLabel() }} &nbsp;·&nbsp; {{ fecha }}</p>
+        </div>
+    </div>
+
+    <!-- Accesos rápidos -->
+    <h2 class="section-title">Accesos rápidos</h2>
+
+    <div class="accesos-grid">
+        <a *ngFor="let item of accesos()" [routerLink]="item.route" class="acceso-card">
+            <div class="acceso-icon" [style.background]="item.color + '18'" [style.color]="item.color">
+                <mat-icon>{{ item.icon }}</mat-icon>
+            </div>
+            <span class="acceso-label">{{ item.label }}</span>
+            <mat-icon class="acceso-arrow">chevron_right</mat-icon>
+        </a>
+    </div>
+
+    <!-- Info del sistema -->
+    <div class="info-card">
+        <h3>Sistema SIPAE</h3>
+        <p>Sistema de Gestión, Ejecución y Rendición de Cuentas del Programa Alimentario Escolar</p>
+        <div class="info-badges">
+            <span class="badge">Ciclo escolar 2025</span>
+            <span class="badge">Universidad Mariano Gálvez de Guatemala</span>
+        </div>
+    </div>
+
+</div>

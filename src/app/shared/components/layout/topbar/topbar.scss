@@ -1,0 +1,80 @@
+.topbar {
+    height: 60px;
+    background: #1a2332;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .15);
+}
+
+.page-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    color: #fff;
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #00BCD4;
+    color: #000;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.user-role {
+    font-size: 11px;
+    color: rgba(255, 255, 255, .6);
+}
+
+.btn-logout {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, .7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all .15s;
+
+    &:hover {
+        background: rgba(255, 255, 255, .1);
+        color: #fff;
+    }
+}

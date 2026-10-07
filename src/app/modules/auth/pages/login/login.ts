@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/services/auth';
 
 @Component({
-  imports: [CommonModule, ReactiveFormsModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [CommonModule, ReactiveFormsModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
   selector: 'app-login',
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],

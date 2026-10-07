@@ -1,1 +1,19 @@
-<p>topbar works!</p>
+<header class="topbar">
+    <div class="topbar-left">
+        <span class="page-title">SIPAE</span>
+    </div>
+    <div class="topbar-right">
+        <div class="user-info">
+            <div class="user-avatar">
+                {{ usuario()?.nombreCompleto?.charAt(0) ?? 'U' }}
+            </div>
+            <div class="user-details">
+                <span class="user-name">{{ usuario()?.nombreCompleto }}</span>
+                <span class="user-role">{{ rolLabel() }}</span>
+            </div>
+        </div>
+        <button class="btn-logout" (click)="logout()">
+            <mat-icon>logout</mat-icon>
+        </button>
+    </div>
+</header>
