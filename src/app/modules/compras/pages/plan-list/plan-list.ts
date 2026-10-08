@@ -43,11 +43,24 @@ export class PlanList implements OnInit {
   puedeCrearPlan = false;
   puedeAprobarPlan = false;
   nuevaAsignacion = this.asignacionVacia();
+  menuSugerenciaId = '';
+  opcionSugerenciaKey = '';
+  sugerenciaCompra: any = null;
+  calculandoSugerencia = false;
 
   plan = {
     escuelaId: '', asignacionId: '', semanaInicio: '',
     semanaFin: '', numEstudiantes: 0,
-    items: [] as { alimentoId: string; cantidadAComprar: number; unidad: string; precioUnitarioQ: number }[],
+    items: [] as {
+      alimentoId: string;
+      cantidadAComprar: number;
+      unidad: string;
+      precioUnitarioQ: number;
+      frecuenciaCompra?: string;
+      fechaCompraSugerida?: string;
+      observacionSugerencia?: string;
+      nombreSugerido?: string;
+    }[],
   };
 
   constructor(
@@ -117,9 +130,73 @@ export class PlanList implements OnInit {
       asignacionId: this.asignacion.id,
       semanaInicio: '', semanaFin: '',
       numEstudiantes: esc?.matriculaActual ?? 0,
-      items: [{ alimentoId: '', cantidadAComprar: 0, unidad: 'lb', precioUnitarioQ: 0 }],
+      items: [],
     };
+    this.menuSugerenciaId = '';
+    this.opcionSugerenciaKey = '';
+    this.sugerenciaCompra = null;
     this.showModal = true;
+  }
+
+  get opcionesRacion(): { key: string; codigo: string; grupo: string }[] {
+    const menu = this.menus.find(item => item.id === this.menuSugerenciaId);
+    const opciones = new Map<string, { key: string; codigo: string; grupo: string }>();
+    for (const item of menu?.itemsRacion ?? []) {
+      const key = `${item.opcionCodigo}::${item.grupoBeneficiario}`;
+      opciones.set(key, { key, codigo: item.opcionCodigo, grupo: item.grupoBeneficiario });
+    }
+    return [...opciones.values()];
+  }
+
+  generarSugerencia(): void {
+    const opcion = this.opcionesRacion.find(item => item.key === this.opcionSugerenciaKey);
+    if (!opcion || !this.menuSugerenciaId || this.plan.numEstudiantes < 1) return;
+    this.calculandoSugerencia = true;
+    this.menSvc.sugerirCompra(this.menuSugerenciaId, {
+      opcionCodigo: opcion.codigo,
+      grupoBeneficiario: opcion.grupo,
+      estudiantes: Number(this.plan.numEstudiantes),
+    }).pipe(finalize(() => {
+      this.calculandoSugerencia = false;
+      this.cdr.markForCheck();
+    })).subscribe({
+      next: response => {
+        this.sugerenciaCompra = response.data;
+        this.plan.items = (response.data?.items ?? []).map((item: any) => {
+          const alimento = this.alimentos.find(catalogo => catalogo.id === item.alimentoId)
+            ?? this.alimentos.find(catalogo => this.normalizar(catalogo.nombre) === this.normalizar(item.alimentoNombre));
+          const frequency = item.tipoCompra === 'no_perecedero'
+            ? 'no_perecedero'
+            : item.tipoCompra === 'perecedero'
+              ? 'semanal'
+              : 'por_definir';
+          const precioPorUnidadCompatible = alimento
+            && this.normalizar(alimento.unidadInventario ?? '') === this.normalizar(item.unidad);
+          return {
+            alimentoId: alimento?.id ?? '',
+            nombreSugerido: item.alimentoNombre,
+            cantidadAComprar: Number(item.cantidadTotal),
+            unidad: item.unidad,
+            precioUnitarioQ: precioPorUnidadCompatible ? Number(item.precioReferenciaQ) || 0 : 0,
+            frecuenciaCompra: frequency,
+            fechaCompraSugerida: frequency === 'semanal' ? this.plan.semanaInicio || undefined : undefined,
+            observacionSugerencia: [
+              item.alertaPrecio,
+              !precioPorUnidadCompatible && item.precioReferenciaQ != null
+                ? `Precio de catálogo por ${alimento?.unidadInventario ?? 'unidad distinta'}; no se aplicó a ${item.unidad}.`
+                : null,
+              frequency === 'semanal' ? 'Frecuencia inicial sugerida; confirmar según vida útil y prácticas de la OPF.' : null,
+            ].filter(Boolean).join(' '),
+          };
+        });
+        this.cdr.markForCheck();
+      },
+      error: error => this.mostrarMensaje(error?.error?.mensaje ?? 'No se pudo calcular la sugerencia desde el menú'),
+    });
+  }
+
+  private normalizar(value: string): string {
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
   }
 
   abrirAsignacion(): void {
@@ -153,7 +230,7 @@ export class PlanList implements OnInit {
   }
 
   agregarItem(): void {
-    this.plan.items.push({ alimentoId: '', cantidadAComprar: 0, unidad: 'lb', precioUnitarioQ: 0 });
+    this.plan.items.push({ alimentoId: '', cantidadAComprar: 0, unidad: 'lb', precioUnitarioQ: 0, frecuenciaCompra: 'por_definir' });
   }
 
   quitarItem(i: number): void {
@@ -161,12 +238,36 @@ export class PlanList implements OnInit {
   }
 
   totalEstimado(): number {
-    return this.plan.items.reduce((s, i) => s + (i.cantidadAComprar * i.precioUnitarioQ), 0);
+    return this.plan.items.reduce((s, i) => s + (i.cantidadAComprar * (Number(i.precioUnitarioQ) || 0)), 0);
+  }
+
+  planValido(): boolean {
+    return Boolean(this.plan.semanaInicio && this.plan.semanaFin && this.plan.semanaFin > this.plan.semanaInicio)
+      && this.plan.numEstudiantes > 0
+      && this.plan.items.length > 0
+      && this.plan.items.every(item => Boolean(item.alimentoId && item.unidad.trim()) && Number(item.cantidadAComprar) > 0);
   }
 
   guardar(): void {
+    if (!this.planValido()) {
+      this.mostrarMensaje('Completa un rango de fechas válido, estudiantes y al menos un alimento con cantidad y unidad.');
+      return;
+    }
+    if (this.plan.items.some(item => !item.alimentoId)) {
+      this.mostrarMensaje('Vincula cada renglón sugerido con un alimento del catálogo o elimina los que no correspondan. El menú original seguirá disponible para consulta.');
+      return;
+    }
     this.guardando = true;
-    this.svc.crearPlan(this.plan).pipe(
+    const payload = {
+      ...this.plan,
+      items: this.plan.items.map(({ nombreSugerido, ...item }) => ({
+        ...item,
+        precioUnitarioQ: Number(item.precioUnitarioQ) > 0 ? Number(item.precioUnitarioQ) : undefined,
+        fechaCompraSugerida: item.fechaCompraSugerida || undefined,
+        observacionSugerencia: item.observacionSugerencia || undefined,
+      })),
+    };
+    this.svc.crearPlan(payload).pipe(
       finalize(() => { this.guardando = false; this.cdr.markForCheck(); })
     ).subscribe({
       next: () => { this.showModal = false; this.cargar(); },
@@ -201,6 +302,10 @@ export class PlanList implements OnInit {
 
   verPlan(plan: any): void {
     this.planDetalle = plan;
+  }
+
+  imprimirPlan(): void {
+    window.print();
   }
 
   mostrarMensaje(message: string): void {

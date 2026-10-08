@@ -1,5 +1,6 @@
 <div class="page">
     <app-page-header title="Menús oficiales" subtitle="Menús publicados por el MINEDUC">
+        <button class="btn-secondary" *ngIf="esTecnico" type="button" (click)="abrirCargaDocumento()"><mat-icon>upload_file</mat-icon> Cargar PDF oficial</button>
         <button class="btn-primary" *ngIf="esTecnico" type="button" (click)="abrirCrear()"><mat-icon>add</mat-icon> Nuevo menú</button>
         <a routerLink="alimentos" class="btn-secondary">
             <mat-icon>set_meal</mat-icon> Catálogo de alimentos
@@ -42,6 +43,9 @@
                         <td><button class="icon-button" type="button" title="Ver menú completo" aria-label="Ver menú completo" (click)="verDetalle(m)"><mat-icon>visibility</mat-icon></button></td>
                         <td *ngIf="esTecnico">
                             <div class="action-btns">
+                                <button class="icon-button" *ngIf="m.documentoPath" type="button" title="Descargar PDF oficial" aria-label="Descargar PDF oficial" (click)="descargarDocumento(m)"><mat-icon>download</mat-icon></button>
+                                <button class="btn-secondary" type="button" (click)="abrirRaciones(m)">Raciones</button>
+                                <button class="btn-secondary" *ngIf="m.documentoPath && m.estado !== 'borrador'" type="button" (click)="abrirDistribucion(m)">Distribuir</button>
                                 <button class="btn-secondary" *ngIf="m.estado === 'borrador'" type="button" (click)="pedirPublicar(m)">
                                     Publicar
                                 </button>
@@ -75,6 +79,9 @@
         <div class="modal-body">
             <p>{{ menuDetalle.descripcion || 'Sin descripción' }}</p>
             <p><strong>Vigencia:</strong> {{ menuDetalle.fechaInicio }} — {{ menuDetalle.fechaFin }} · <strong>Estado:</strong> {{ menuDetalle.estado }}</p>
+            <p *ngIf="menuDetalle.nivelEducativo || menuDetalle.departamento || menuDetalle.numeroEntrega"><strong>Aplicación:</strong> {{ menuDetalle.nivelEducativo || 'Nivel no especificado' }} · {{ menuDetalle.departamento || 'Cobertura no especificada' }} · Entrega {{ menuDetalle.numeroEntrega || 'no especificada' }}</p>
+            <p *ngIf="menuDetalle.documentoNombre"><strong>Documento oficial:</strong> {{ menuDetalle.documentoNombre }} <button class="btn-secondary" type="button" (click)="descargarDocumento(menuDetalle)"><mat-icon>download</mat-icon> Descargar</button></p>
+            <p *ngIf="menuDetalle.diasCobertura || menuDetalle.montoDiarioAlumnoQ"><strong>Cobertura:</strong> {{ menuDetalle.diasCobertura || '—' }} días · <strong>Asignación diaria:</strong> {{ menuDetalle.montoDiarioAlumnoQ ? ('Q ' + menuDetalle.montoDiarioAlumnoQ) : 'No especificada' }}</p>
             <div class="menu-detail-day" *ngFor="let dia of menuDetalle.dias">
                 <h4>Semana {{ dia.semanaNumero }} · {{ dia.dia | titlecase }}</h4>
                 <p>{{ dia.descripcionRefaccion }}</p>
@@ -86,8 +93,62 @@
                 </div>
             </div>
             <p *ngIf="!menuDetalle.dias?.length">Este menú no tiene días detallados.</p>
+            <h4 *ngIf="menuDetalle.itemsRacion?.length">Opciones de ración capturadas del documento</h4>
+            <div class="table-wrap" *ngIf="menuDetalle.itemsRacion?.length"><table><thead><tr><th>Opción</th><th>Grupo</th><th>Alimento</th><th>Presentación</th><th>Cantidad por beneficiario</th><th>Origen</th></tr></thead><tbody><tr *ngFor="let item of menuDetalle.itemsRacion"><td>{{ item.opcionCodigo }}</td><td>{{ item.grupoBeneficiario }}</td><td>{{ item.alimentoNombre }}</td><td>{{ item.presentacion }}</td><td>{{ item.cantidad }} {{ item.unidad }}</td><td>{{ item.origenCompra }}</td></tr></tbody></table></div>
         </div>
         <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="menuDetalle = null">Cerrar</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="showDocumentoModal" (click)="showDocumentoModal = false">
+    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="menu-upload-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="menu-upload-title">Cargar documento oficial</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="showDocumentoModal = false"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <p>El PDF se conserva como fuente original. Los renglones de las opciones deben transcribirse y validarse antes de generar sugerencias.</p>
+            <div class="form-field"><label>Archivo PDF</label><input type="file" accept="application/pdf,.pdf" (change)="seleccionarDocumento($event)"><small *ngIf="archivoDocumento">{{ archivoDocumento.name }} · {{ archivoDocumento.size / 1024 / 1024 | number:'1.1-1' }} MB</small></div>
+            <div class="form-field"><label>Nombre del menú/documento</label><input [(ngModel)]="documento.nombre" required></div>
+            <div class="form-field"><label>Descripción</label><textarea rows="2" [(ngModel)]="documento.descripcion"></textarea></div>
+            <div class="form-row cols-2"><div class="form-field"><label>Vigencia desde</label><input type="date" [(ngModel)]="documento.fechaInicio"></div><div class="form-field"><label>Vigencia hasta</label><input type="date" [(ngModel)]="documento.fechaFin"></div></div>
+            <div class="form-row cols-2"><div class="form-field"><label>Nivel educativo</label><input [(ngModel)]="documento.nivelEducativo" placeholder="Inicial, preprimaria, primaria, medio"></div><div class="form-field"><label>Departamento/cobertura</label><input [(ngModel)]="documento.departamento"></div></div>
+            <div class="form-row cols-3"><div class="form-field"><label>Grupo beneficiario</label><input [(ngModel)]="documento.grupoBeneficiario"></div><div class="form-field"><label>Número de entrega</label><input [(ngModel)]="documento.numeroEntrega"></div><div class="form-field"><label>Días de cobertura</label><input type="number" min="1" [(ngModel)]="documento.diasCobertura"></div></div>
+            <div class="form-field"><label>Monto diario por estudiante (Q), si el documento lo indica</label><input type="number" min="0" step="0.01" [(ngModel)]="documento.montoDiarioAlumnoQ"></div>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="showDocumentoModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="subirDocumento()" [disabled]="subiendoDocumento || !archivoDocumento || !documento.nombre || !documento.fechaInicio || !documento.fechaFin">{{ subiendoDocumento ? 'Cargando...' : 'Guardar PDF como borrador' }}</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="menuDistribucion" (click)="menuDistribucion = null">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="distribution-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="distribution-title">Distribuir menú</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="menuDistribucion = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body"><p>{{ menuDistribucion.nombre }}</p><label class="school-choice" *ngFor="let escuela of escuelas"><input type="checkbox" [checked]="escuelasSeleccionadas.includes(escuela.id)" (change)="alternarEscuela(escuela.id, $any($event.target).checked)"><span>{{ escuela.nombre }} · {{ escuela.departamento }}</span></label></div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="menuDistribucion = null">Cancelar</button><button class="btn-primary" type="button" (click)="guardarDistribucion()" [disabled]="distribuyendo || !escuelasSeleccionadas.length">{{ distribuyendo ? 'Distribuyendo...' : 'Distribuir a seleccionadas' }}</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="menuRaciones" (click)="menuRaciones = null">
+    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="ration-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="ration-title">Renglones oficiales · {{ menuRaciones.nombre }}</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="menuRaciones = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <p>Transcribe las cantidades por beneficiario tal como aparecen en el documento y confirma su grupo/origen. No se infieren precios.</p>
+            <div class="items-header"><strong>Opciones y alimentos</strong><button class="btn-secondary" type="button" (click)="agregarRacion()"><mat-icon>add</mat-icon> Añadir renglón</button></div>
+            <div class="ration-row" *ngFor="let item of raciones; let index = index">
+                <input aria-label="Código de opción" placeholder="Opción A/B" [(ngModel)]="item.opcionCodigo">
+                <input aria-label="Grupo beneficiario" placeholder="Grupo beneficiario" [(ngModel)]="item.grupoBeneficiario">
+                <input aria-label="Alimento" placeholder="Alimento según documento" [(ngModel)]="item.alimentoNombre">
+                <input aria-label="Presentación" placeholder="Presentación" [(ngModel)]="item.presentacion">
+                <input aria-label="Cantidad por beneficiario" type="number" min="0.001" step="0.001" [(ngModel)]="item.cantidad">
+                <input aria-label="Unidad" placeholder="Unidad" [(ngModel)]="item.unidad">
+                <select aria-label="Origen de compra" [(ngModel)]="item.origenCompra"><option value="por_definir">Origen por confirmar</option><option value="agricultura_familiar">Agricultura familiar</option><option value="procesado">Alimento procesado</option></select>
+                <select aria-label="Coincidencia en catálogo" [(ngModel)]="item.alimentoId"><option value="">Sin vincular a catálogo</option><option *ngFor="let alimento of alimentos" [value]="alimento.id">{{ alimento.nombre }}</option></select>
+                <button class="icon-button" type="button" title="Quitar renglón" (click)="quitarRacion(index)"><mat-icon>delete</mat-icon></button>
+            </div>
+            <hr>
+            <h4>Calcular cantidades para revisar</h4>
+            <div class="form-row cols-3"><div class="form-field"><label>Opción y grupo</label><select [(ngModel)]="opcionCodigo"><option value="">Seleccionar</option><option *ngFor="let opcion of opcionesRacion" [ngValue]="opcion.codigo + '|' + opcion.grupo">{{ opcion.codigo }} · {{ opcion.grupo }}</option></select></div><div class="form-field"><label>Estudiantes/beneficiarios</label><input type="number" min="1" step="1" [(ngModel)]="estudiantesSugerencia"></div><div class="form-field"><label>&nbsp;</label><button class="btn-secondary" type="button" (click)="grupoBeneficiarioSugerencia = opcionCodigo.split('|')[1] || ''; opcionCodigo = opcionCodigo.split('|')[0] || ''; solicitarSugerencia()" [disabled]="cargandoSugerencia || !opcionCodigo || !estudiantesSugerencia">{{ cargandoSugerencia ? 'Calculando...' : 'Calcular cantidades' }}</button></div></div>
+            <div class="alert warning" *ngIf="sugerencia"><mat-icon>warning_amber</mat-icon><span>{{ sugerencia.nota }} Los resultados son cantidades sugeridas, no aprobación ni cotización.</span></div>
+            <div class="table-wrap" *ngIf="sugerencia?.items?.length"><table><thead><tr><th>Alimento</th><th>Presentación</th><th>Por beneficiario</th><th>Total calculado</th><th>Tipo de compra</th><th>Precio</th></tr></thead><tbody><tr *ngFor="let item of sugerencia.items"><td>{{ item.alimentoNombre }}</td><td>{{ item.presentacion }}</td><td>{{ item.cantidadPorBeneficiario }} {{ item.unidad }}</td><td>{{ item.cantidadTotal }} {{ item.unidad }}</td><td>{{ item.tipoCompra }}</td><td>{{ item.precioReferenciaQ === null ? 'Sin dato oficial' : ('Q ' + item.precioReferenciaQ) }}<small *ngIf="item.alertaPrecio">{{ item.alertaPrecio }}</small></td></tr></tbody></table></div>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="menuRaciones = null">Cerrar</button><button class="btn-primary" *ngIf="menuRaciones.estado === 'borrador'" type="button" (click)="guardarRaciones()" [disabled]="guardandoRaciones || raciones.some(item => !item.opcionCodigo || !item.grupoBeneficiario || !item.alimentoNombre || !item.presentacion || item.cantidad <= 0 || !item.unidad)">{{ guardandoRaciones ? 'Guardando...' : 'Guardar renglones' }}</button></footer>
     </section>
 </div>
 

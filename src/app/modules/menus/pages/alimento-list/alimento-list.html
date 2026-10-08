@@ -31,6 +31,8 @@
                         <th>Carb g</th>
                         <th>Grasa g</th>
                         <th>Precio ref. Q</th>
+                        <th>Fuente / zona / fecha</th>
+                        <th>Compra</th>
                         <th>Unidad</th>
                     </tr>
                 </thead>
@@ -42,7 +44,9 @@
                         <td>{{ a.proteinaG }}</td>
                         <td>{{ a.carbohidratosG }}</td>
                         <td>{{ a.grasasG }}</td>
-                        <td>{{ a.precioRefQ ? 'Q ' + a.precioRefQ : '—' }}</td>
+                        <td>{{ a.precioRefQ !== null && a.precioRefQ !== undefined ? ('Q ' + a.precioRefQ) : '—' }}</td>
+                        <td>{{ a.precioRefFuente || 'Sin fuente' }} · {{ a.precioRefZona || 'Zona no indicada' }} · {{ a.precioRefFecha || 'Fecha no indicada' }}</td>
+                        <td>{{ a.tipoCompra || 'por_definir' }} · {{ a.origenCompra || 'por_definir' }}</td>
                         <td>{{ a.unidadInventario }}</td>
                     </tr>
                 </tbody>
@@ -102,8 +106,14 @@
                 </div>
                 <div class="form-field">
                     <label>Precio referencia (Q)</label>
-                    <input type="number" [(ngModel)]="nuevo.precioRefQ" min="0" step="0.01">
+                    <input type="number" [(ngModel)]="nuevo.precioRefQ" min="0.01" step="0.01">
                 </div>
+                <div class="form-field"><label>Fuente del precio</label><input [(ngModel)]="nuevo.precioRefFuente" placeholder="Documento, mercado, cotización..."></div>
+                <div class="form-field"><label>Fecha del precio</label><input type="date" [(ngModel)]="nuevo.precioRefFecha"></div>
+                <div class="form-field"><label>Zona del precio</label><input [(ngModel)]="nuevo.precioRefZona" placeholder="Municipio/departamento"></div>
+                <div class="form-field"><label>Tipo de compra</label><select [(ngModel)]="nuevo.tipoCompra"><option *ngFor="let tipo of tiposCompra" [value]="tipo.value">{{ tipo.label }}</option></select></div>
+                <div class="form-field"><label>Origen</label><select [(ngModel)]="nuevo.origenCompra"><option *ngFor="let origen of origenesCompra" [value]="origen.value">{{ origen.label }}</option></select></div>
+                <div class="form-field"><label>Vida útil estimada en días (opcional)</label><input type="number" min="1" step="1" [(ngModel)]="nuevo.diasVidaUtil"></div>
             </div>
         </div>
         <div class="modal-foot">

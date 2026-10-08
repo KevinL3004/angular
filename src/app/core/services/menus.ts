@@ -27,6 +27,21 @@ export class MenusService {
   crear(data: any): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(this.api, data);
   }
+  subirDocumento(data: FormData): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.api}/documentos`, data);
+  }
+  distribuir(id: string, escuelaIds: string[]): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.api}/${id}/distribuciones`, { escuelaIds });
+  }
+  guardarOpcionesRacion(id: string, items: any[]): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.api}/${id}/opciones-racion`, { items });
+  }
+  sugerirCompra(id: string, data: { opcionCodigo: string; grupoBeneficiario: string; estudiantes: number }): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.api}/${id}/sugerencia-compra`, data);
+  }
+  descargarDocumento(id: string): Observable<Blob> {
+    return this.http.get(`${this.api}/${id}/documento`, { responseType: 'blob' });
+  }
   publicar(id: string): Observable<ApiResponse<any>> {
     return this.http.patch<ApiResponse<any>>(`${this.api}/${id}/publicar`, {});
   }

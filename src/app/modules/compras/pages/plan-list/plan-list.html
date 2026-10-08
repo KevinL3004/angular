@@ -110,7 +110,7 @@
 </app-confirm-modal>
 
 <div class="modal-bg" *ngIf="planDetalle" (click)="planDetalle = null">
-    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="plan-detail-title" (click)="$event.stopPropagation()">
+    <section class="modal modal-lg print-target" role="dialog" aria-modal="true" aria-labelledby="plan-detail-title" (click)="$event.stopPropagation()">
         <header class="modal-head"><h3 id="plan-detail-title">Detalle del plan de compra</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="planDetalle = null"><mat-icon>close</mat-icon></button></header>
         <div class="modal-body">
             <dl class="detail-grid">
@@ -127,7 +127,7 @@
             </div>
             <ng-template #noPlanItems><p>El plan no tiene artículos detallados.</p></ng-template>
         </div>
-        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="planDetalle = null">Cerrar</button></footer>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="planDetalle = null">Cerrar</button><button class="btn-primary" type="button" (click)="imprimirPlan()"><mat-icon>print</mat-icon> Imprimir plan</button></footer>
     </section>
 </div>
 
@@ -167,6 +167,17 @@
                 </div>
             </div>
 
+            <section class="suggestion-panel">
+                <h4>Sugerir cantidades desde menú oficial</h4>
+                <p>Escala los renglones transcritos del menú por número de beneficiarios. Es un cálculo determinista, no una recomendación de IA ni una cotización. Revisa y edita los resultados.</p>
+                <div class="form-row cols-3">
+                    <div class="form-field"><label>Menú oficial</label><select [(ngModel)]="menuSugerenciaId" (ngModelChange)="opcionSugerenciaKey = ''; sugerenciaCompra = null"><option value="">Seleccionar menú</option><option *ngFor="let menu of menus" [value]="menu.id">{{ menu.nombre }} · {{ menu.nivelEducativo || 'Nivel no especificado' }}</option></select></div>
+                    <div class="form-field"><label>Opción / grupo</label><select [(ngModel)]="opcionSugerenciaKey"><option value="">Seleccionar ración</option><option *ngFor="let opcion of opcionesRacion" [value]="opcion.key">Opción {{ opcion.codigo }} · {{ opcion.grupo }}</option></select></div>
+                    <div class="form-field"><label>&nbsp;</label><button class="btn-secondary" type="button" (click)="generarSugerencia()" [disabled]="calculandoSugerencia || !menuSugerenciaId || !opcionSugerenciaKey || plan.numEstudiantes < 1">{{ calculandoSugerencia ? 'Calculando...' : 'Calcular cantidades' }}</button></div>
+                </div>
+                <div class="alert warning" *ngIf="sugerenciaCompra"><mat-icon>info</mat-icon> Cantidades calculadas desde datos transcritos; compara con el PDF original. Los precios faltantes siguen sin definir y requieren cotización local.</div>
+            </section>
+
             <div class="items-header">
                 <span class="items-title">Alimentos a comprar</span>
                 <button class="btn-secondary" type="button" (click)="agregarItem()">
@@ -176,6 +187,7 @@
 
             <div *ngFor="let item of plan.items; let i = index" class="item-row">
                 <div class="form-field" style="flex:2;margin:0">
+                    <small *ngIf="item.nombreSugerido">Sugerido: {{ item.nombreSugerido }}</small>
                     <select [(ngModel)]="item.alimentoId">
                         <option value="">Seleccionar alimento</option>
                         <option *ngFor="let a of alimentos" [value]="a.id">{{ a.nombre }}</option>
@@ -190,6 +202,12 @@
                 <div class="form-field" style="flex:1;margin:0">
                     <input type="number" [(ngModel)]="item.precioUnitarioQ" placeholder="Precio Q" min="0" step="0.01">
                 </div>
+                <div class="form-field" style="flex:1;margin:0">
+                    <select [(ngModel)]="item.frecuenciaCompra"><option value="por_definir">Frecuencia por confirmar</option><option value="no_perecedero">Compra por período</option><option value="semanal">Semanal</option><option value="diaria">Diaria</option></select>
+                </div>
+                <div class="form-field" style="flex:1;margin:0">
+                    <input type="date" [(ngModel)]="item.fechaCompraSugerida" aria-label="Fecha sugerida de compra">
+                </div>
                 <button class="btn-danger" type="button" (click)="quitarItem(i)" style="height:38px;margin-top:auto">
                     <mat-icon>delete</mat-icon>
                 </button>
@@ -201,7 +219,7 @@
         </div>
         <div class="modal-foot">
             <button class="btn-secondary" (click)="showModal=false">Cancelar</button>
-            <button class="btn-primary" (click)="guardar()" [disabled]="guardando">
+            <button class="btn-primary" (click)="guardar()" [disabled]="guardando || !planValido()">
                 {{ guardando ? 'Guardando...' : 'Crear plan' }}
             </button>
         </div>

@@ -38,3 +38,32 @@ a {
   color: var(--accent);
   text-decoration: none;
 }
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-target,
+  .print-target * {
+    visibility: visible !important;
+  }
+
+  .print-target {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
+
+  .print-target .modal-head button,
+  .print-target .modal-foot {
+    display: none !important;
+  }
+}

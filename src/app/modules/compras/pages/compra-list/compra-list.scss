@@ -18,6 +18,14 @@
 	}
 }
 
+.file-action { position: relative; cursor: pointer; }
+.file-action.disabled { opacity: .55; pointer-events: none; }
+.file-action mat-icon { width: 16px; height: 16px; font-size: 16px; }
+.reconciliation-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.reconciliation-summary div { display: grid; gap: 5px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 6px; }
+.reconciliation-summary span { color: #6b7280; font-size: 11px; }
+.reconciliation-summary strong { color: #111827; font-size: 14px; }
+
 @media (max-width: 560px) {
 	.detail-grid {
 		grid-template-columns: 1fr;

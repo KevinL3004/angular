@@ -29,6 +29,10 @@ export class CompraList implements OnInit {
   loading = true;
   showModal = false;
   compraDetalle: any = null;
+  compraConciliacion: any = null;
+  conciliacion: any = null;
+  cargandoConciliacion = false;
+  facturaSubiendoId: string | null = null;
   compraPendiente: any = null;
   accionPendiente: 'verificar' | 'rechazar' | null = null;
   actualizandoEstado = false;
@@ -144,6 +148,56 @@ export class CompraList implements OnInit {
 
   verDetalle(compra: any): void {
     this.compraDetalle = compra;
+  }
+
+  seleccionarFactura(compra: any, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const factura = input.files?.[0];
+    input.value = '';
+    if (!factura) return;
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(factura.type)) {
+      this.error = 'La factura debe ser PDF, JPEG, PNG o WebP';
+      this.cdr.markForCheck();
+      return;
+    }
+    this.facturaSubiendoId = compra.id;
+    this.comprasService.subirFactura(compra.id, factura).pipe(finalize(() => {
+      this.facturaSubiendoId = null;
+      this.cdr.markForCheck();
+    })).subscribe({
+      next: () => this.cargar(),
+      error: error => { this.error = error?.error?.mensaje ?? 'No se pudo adjuntar la factura'; this.cdr.markForCheck(); },
+    });
+  }
+
+  descargarFactura(compra: any): void {
+    this.comprasService.descargarFactura(compra.id).subscribe({
+      next: blob => this.descargarBlob(blob, compra.facturaNombreOriginal || `factura-${compra.id}`),
+      error: () => { this.error = 'No se pudo descargar la factura'; this.cdr.markForCheck(); },
+    });
+  }
+
+  abrirConciliacion(compra: any): void {
+    this.compraConciliacion = compra;
+    this.conciliacion = null;
+    this.cargandoConciliacion = true;
+    this.comprasService.getConciliacion(compra.id).pipe(finalize(() => {
+      this.cargandoConciliacion = false;
+      this.cdr.markForCheck();
+    })).subscribe({
+      next: response => { this.conciliacion = response.data; },
+      error: error => { this.error = error?.error?.mensaje ?? 'No se pudo calcular la conciliación'; this.cdr.markForCheck(); },
+    });
+  }
+
+  private descargarBlob(blob: Blob, nombre: string): void {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = nombre;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   confirmarCambioEstado(): void {

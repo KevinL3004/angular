@@ -31,12 +31,25 @@ export class AlimentoList implements OnInit {
   nuevo = {
     nombre: '', grupo: 'cereales', kcalPor100g: 0,
     proteinaG: 0, carbohidratosG: 0, grasasG: 0,
-    precioRefQ: 0, unidadInventario: 'lb',
+    precioRefQ: null as number | null,
+    precioRefFuente: '', precioRefFecha: '', precioRefZona: '',
+    tipoCompra: 'por_definir', origenCompra: 'por_definir', diasVidaUtil: null as number | null,
+    unidadInventario: 'lb',
   };
 
   grupos = [
     'leguminosas', 'cereales', 'lacteos', 'carnes',
     'frutas', 'verduras', 'grasas_aceites', 'bebidas', 'otros',
+  ];
+  readonly tiposCompra = [
+    { value: 'por_definir', label: 'Por definir' },
+    { value: 'perecedero', label: 'Perecedero' },
+    { value: 'no_perecedero', label: 'No perecedero' },
+  ];
+  readonly origenesCompra = [
+    { value: 'por_definir', label: 'Por confirmar' },
+    { value: 'agricultura_familiar', label: 'Agricultura familiar' },
+    { value: 'procesado', label: 'Procesado' },
   ];
 
   constructor(
@@ -80,7 +93,9 @@ export class AlimentoList implements OnInit {
         this.nuevo = {
           nombre: '', grupo: 'cereales', kcalPor100g: 0,
           proteinaG: 0, carbohidratosG: 0, grasasG: 0,
-          precioRefQ: 0, unidadInventario: 'lb',
+          precioRefQ: null, precioRefFuente: '', precioRefFecha: '', precioRefZona: '',
+          tipoCompra: 'por_definir', origenCompra: 'por_definir', diasVidaUtil: null,
+          unidadInventario: 'lb',
         };
         this.cargar();
       },

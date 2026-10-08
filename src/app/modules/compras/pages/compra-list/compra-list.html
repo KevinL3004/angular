@@ -13,11 +13,44 @@
             <table><thead><tr><th>Fecha</th><th>Plan</th><th>Proveedor</th><th>Factura</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody><tr *ngFor="let compra of compras">
                     <td>{{ compra.fechaCompra | date:'dd/MM/yyyy' }}</td><td>{{ compra.plan?.semanaInicio }} — {{ compra.plan?.semanaFin }}</td><td>{{ compra.proveedor?.nombre || '—' }}</td><td>{{ compra.numeroFactura || '—' }}</td><td>Q {{ compra.totalGastadoQ | number:'1.2-2' }}</td><td><span class="badge" [class.green]="compra.estado === 'verificada'" [class.red]="compra.estado === 'rechazada'" [class.yellow]="compra.estado === 'registrada'">{{ compra.estado }}</span></td>
-                    <td><div class="action-btns"><button class="icon-button" type="button" title="Ver detalle" [attr.aria-label]="'Ver detalle de compra ' + compra.numeroFactura" (click)="verDetalle(compra)"><mat-icon>visibility</mat-icon></button><ng-container *ngIf="puedeRevisar && compra.estado === 'registrada'"><button class="btn-success" type="button" (click)="cambiarEstado(compra, 'verificar')">Verificar</button><button class="btn-danger" type="button" (click)="cambiarEstado(compra, 'rechazar')">Rechazar</button></ng-container></div></td>
+                    <td>
+                        <div class="action-btns">
+                            <button class="icon-button" type="button" title="Ver detalle" [attr.aria-label]="'Ver detalle de compra ' + compra.numeroFactura" (click)="verDetalle(compra)"><mat-icon>visibility</mat-icon></button>
+                            <button class="icon-button" type="button" title="Ver conciliación" (click)="abrirConciliacion(compra)"><mat-icon>fact_check</mat-icon></button>
+                            <button class="icon-button" *ngIf="compra.imagenFactura" type="button" title="Descargar factura" (click)="descargarFactura(compra)"><mat-icon>download</mat-icon></button>
+                            <label class="btn-secondary file-action" *ngIf="compra.estado === 'registrada' && puedeRegistrar" [class.disabled]="facturaSubiendoId === compra.id">
+                                <mat-icon>attach_file</mat-icon>{{ compra.imagenFactura ? 'Reemplazar factura' : 'Adjuntar factura' }}
+                                <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" (change)="seleccionarFactura(compra, $event)" [disabled]="facturaSubiendoId === compra.id" hidden>
+                            </label>
+                            <ng-container *ngIf="puedeRevisar && compra.estado === 'registrada'"><button class="btn-success" type="button" (click)="cambiarEstado(compra, 'verificar')" [disabled]="!compra.imagenFactura">Verificar</button><button class="btn-danger" type="button" (click)="cambiarEstado(compra, 'rechazar')">Rechazar</button></ng-container>
+                        </div>
+                        <small *ngIf="compra.estado === 'registrada' && !compra.imagenFactura">Adjunta factura antes de verificar</small>
+                    </td>
                 </tr></tbody>
             </table>
         </div>
     </div>
+</div>
+
+<div class="modal-bg" *ngIf="compraConciliacion" (click)="compraConciliacion = null">
+    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="conciliation-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="conciliation-title">Conciliación de compra</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="compraConciliacion = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <app-loading *ngIf="cargandoConciliacion"></app-loading>
+            <ng-container *ngIf="conciliacion && !cargandoConciliacion">
+                <div class="reconciliation-summary">
+                    <div><span>Presupuestado</span><strong>Q {{ conciliacion.montoPresupuestado | number:'1.2-2' }}</strong></div>
+                    <div><span>Total declarado</span><strong>Q {{ conciliacion.totalDeclarado | number:'1.2-2' }}</strong></div>
+                    <div><span>Total de partidas</span><strong>Q {{ conciliacion.totalCalculadoPartidas | number:'1.2-2' }}</strong></div>
+                    <div><span>Diferencia declarado/partidas</span><strong>Q {{ conciliacion.diferenciaTotalDeclarado | number:'1.2-2' }}</strong></div>
+                    <div><span>Factura adjunta</span><strong>{{ conciliacion.facturaAdjunta ? 'Sí' : 'No' }}</strong></div>
+                </div>
+                <div class="alert warning"><mat-icon>info</mat-icon>La conciliación compara los datos registrados por el usuario. No lee ni verifica automáticamente el contenido del archivo de factura; requiere revisión humana.</div>
+                <div class="table-wrap"><table><thead><tr><th>Alimento</th><th>Cantidad planificada</th><th>Cantidad comprada</th><th>Diferencia</th><th>Costo planificado</th><th>Costo real</th><th>Resultado</th></tr></thead><tbody><tr *ngFor="let partida of conciliacion.partidas"><td>{{ partida.alimento }}</td><td>{{ partida.cantidadPlaneada }}</td><td>{{ partida.cantidadComprada }}</td><td>{{ partida.diferenciaCantidad }}</td><td>{{ partida.subtotalPlaneado === null ? 'Sin precio' : ('Q ' + (partida.subtotalPlaneado | number:'1.2-2')) }}</td><td>Q {{ partida.subtotalReal | number:'1.2-2' }}</td><td>{{ partida.estado }}</td></tr></tbody></table></div>
+            </ng-container>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="compraConciliacion = null">Cerrar</button></footer>
+    </section>
 </div>
 
 <app-confirm-modal

@@ -55,6 +55,17 @@ export class ComprasService {
   registrarCompra(data: any): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.api}/realizadas`, data);
   }
+  subirFactura(compraId: string, factura: File): Observable<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('factura', factura);
+    return this.http.post<ApiResponse<any>>(`${this.api}/realizadas/${compraId}/factura`, formData);
+  }
+  descargarFactura(compraId: string): Observable<Blob> {
+    return this.http.get(`${this.api}/realizadas/${compraId}/factura`, { responseType: 'blob' });
+  }
+  getConciliacion(compraId: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.api}/realizadas/${compraId}/conciliacion`);
+  }
   verificarCompra(id: string): Observable<ApiResponse<any>> {
     return this.http.patch<ApiResponse<any>>(`${this.api}/realizadas/${id}/verificar`, {});
   }
