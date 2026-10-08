@@ -1,6 +1,6 @@
 <div class="page">
     <app-page-header title="Escuelas" subtitle="Establecimientos educativos registrados en el sistema">
-        <button class="btn-primary" *ngIf="esTecnico">
+        <button class="btn-primary" *ngIf="esTecnico" type="button" (click)="abrirCrear()">
             <mat-icon>add</mat-icon> Nueva escuela
         </button>
     </app-page-header>
@@ -26,7 +26,8 @@
                         <th>Departamento</th>
                         <th>Matrícula</th>
                         <th>Estado</th>
-                        <th *ngIf="esTecnico"></th>
+                        <th>Detalle</th>
+                        <th *ngIf="esTecnico">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,7 +42,10 @@
                                 {{ e.activa ? 'Activa' : 'Inactiva' }}
                             </span>
                         </td>
+                        <td><button class="icon-button" type="button" title="Ver ficha de escuela" [attr.aria-label]="'Ver ficha de ' + e.nombre" (click)="verDetalle(e)"><mat-icon>visibility</mat-icon></button></td>
                         <td *ngIf="esTecnico">
+                            <button class="btn-secondary" type="button" (click)="abrirUsuarios(e)"><mat-icon>group</mat-icon> Usuarios</button>
+                            <button class="icon-button" type="button" title="Editar escuela" (click)="abrirEditar(e)"><mat-icon>edit</mat-icon></button>
                             <button class="btn-danger" *ngIf="e.activa" (click)="desactivar(e.id)">
                                 Desactivar
                             </button>
@@ -50,5 +54,66 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<app-confirm-modal
+    [open]="!!escuelaPendiente"
+    title="Desactivar escuela"
+    [message]="'¿Deseas desactivar ' + escuelaPendiente?.nombre + '? La escuela dejará de estar disponible para nuevas operaciones.'"
+    [confirmText]="desactivando ? 'Procesando...' : 'Desactivar'"
+    variant="danger"
+    (confirmed)="confirmarDesactivar()"
+    (cancelled)="escuelaPendiente = null">
+</app-confirm-modal>
+
+<div class="modal-bg" *ngIf="escuelaDetalle" (click)="escuelaDetalle = null">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="escuela-detail-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="escuela-detail-title">Ficha de escuela</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="escuelaDetalle = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <dl class="detail-grid">
+                <div><dt>Nombre</dt><dd>{{ escuelaDetalle.nombre }}</dd></div>
+                <div><dt>Código MINEDUC</dt><dd>{{ escuelaDetalle.codigoMineduc }}</dd></div>
+                <div><dt>Municipio</dt><dd>{{ escuelaDetalle.municipio }}</dd></div>
+                <div><dt>Departamento</dt><dd>{{ escuelaDetalle.departamento }}</dd></div>
+                <div><dt>Matrícula actual</dt><dd>{{ escuelaDetalle.matriculaActual }}</dd></div>
+                <div><dt>Estado</dt><dd>{{ escuelaDetalle.activa ? 'Activa' : 'Inactiva' }}</dd></div>
+                <div class="detail-wide"><dt>Dirección</dt><dd>{{ escuelaDetalle.direccion || 'Sin dirección registrada' }}</dd></div>
+            </dl>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="escuelaDetalle = null">Cerrar</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="showUsuariosModal" (click)="showUsuariosModal = false">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>Usuarios de {{ escuelaSeleccionada?.nombre }}</h3><button class="modal-close" type="button" (click)="showUsuariosModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <div class="form-row" style="grid-template-columns:1fr auto;align-items:end">
+                <div class="form-field"><label>Asignar usuario</label><select [(ngModel)]="usuarioId"><option value="">Seleccionar usuario</option><option *ngFor="let usuario of usuariosDisponibles" [value]="usuario.id">{{ usuario.nombreCompleto }} ({{ usuario.username }})</option></select></div>
+                <button class="btn-primary" type="button" (click)="asignarUsuario()" [disabled]="!usuarioId">Asignar</button>
+            </div>
+            <h4>Usuarios asignados</h4>
+            <p *ngIf="!escuelaUsuarios.length">No hay usuarios asignados.</p>
+            <div class="assigned-user" *ngFor="let asignacion of escuelaUsuarios"><span>{{ asignacion.usuario?.nombreCompleto }}</span><span class="badge blue">{{ asignacion.usuario?.rol }}</span></div>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showUsuariosModal = false">Cerrar</button></div>
+    </div>
+</div>
+
+<div class="modal-bg" *ngIf="showModal" (click)="showModal = false">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>{{ editando ? 'Editar escuela' : 'Nueva escuela' }}</h3><button class="modal-close" type="button" (click)="showModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <div class="form-field"><label>Código MINEDUC</label><input [(ngModel)]="formulario.codigoMineduc" [readonly]="!!editando" [disabled]="!!editando" required></div>
+            <div class="form-field"><label>Nombre</label><input [(ngModel)]="formulario.nombre" required></div>
+            <div class="form-row cols-2">
+                <div class="form-field"><label>Municipio</label><input [(ngModel)]="formulario.municipio" required></div>
+                <div class="form-field"><label>Departamento</label><input [(ngModel)]="formulario.departamento" required></div>
+            </div>
+            <div class="form-field"><label>Dirección</label><input [(ngModel)]="formulario.direccion"></div>
+            <div class="form-field"><label>Matrícula actual</label><input type="number" min="0" step="1" [(ngModel)]="formulario.matriculaActual" required></div>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardar()" [disabled]="guardando || !formulario.nombre || !formulario.codigoMineduc || !formulario.municipio || !formulario.departamento">{{ guardando ? 'Guardando...' : 'Guardar escuela' }}</button></div>
     </div>
 </div>

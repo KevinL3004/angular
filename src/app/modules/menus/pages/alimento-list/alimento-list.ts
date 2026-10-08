@@ -9,11 +9,12 @@ import { AuthService } from '../../../../core/services/auth';
 import { PageHeader } from '../../../../shared/components/ui/page-header/page-header';
 import { Loading } from '../../../../shared/components/ui/loading/loading';
 import { EmptyState } from '../../../../shared/components/ui/empty-state/empty-state';
+import { ConfirmModal } from '../../../../shared/components/ui/confirm-modal/confirm-modal';
 
 @Component({
   selector: 'app-alimento-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, MatIconModule, PageHeader, Loading, EmptyState],
+  imports: [CommonModule, FormsModule, RouterModule, MatIconModule, PageHeader, Loading, EmptyState, ConfirmModal],
   templateUrl: './alimento-list.html',
   styleUrls: ['./alimento-list.scss'],
 })
@@ -24,6 +25,7 @@ export class AlimentoList implements OnInit {
   filtro = '';
   showModal = false;
   guardando = false;
+  mensajeModal: { title: string; message: string } | null = null;
   puedeCrear = false;
 
   nuevo = {
@@ -82,7 +84,7 @@ export class AlimentoList implements OnInit {
         };
         this.cargar();
       },
-      error: (e) => { alert(e?.error?.mensaje ?? 'Error al guardar'); },
+      error: e => { this.mensajeModal = { title: 'No se pudo guardar el alimento', message: e?.error?.mensaje ?? 'Ocurrió un error al guardar el alimento.' }; },
     });
   }
 }

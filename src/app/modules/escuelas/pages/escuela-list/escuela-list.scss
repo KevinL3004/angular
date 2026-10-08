@@ -7,3 +7,6 @@ code {
 .fw-600 {
     font-weight: 600;
 }
+
+.icon-button { border: 0; background: transparent; color: #4b5563; cursor: pointer; padding: 6px; }
+.assigned-user { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }

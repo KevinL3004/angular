@@ -1,5 +1,6 @@
 <div class="page">
     <app-page-header title="Menús oficiales" subtitle="Menús publicados por el MINEDUC">
+        <button class="btn-primary" *ngIf="esTecnico" type="button" (click)="abrirCrear()"><mat-icon>add</mat-icon> Nuevo menú</button>
         <a routerLink="alimentos" class="btn-secondary">
             <mat-icon>set_meal</mat-icon> Catálogo de alimentos
         </a>
@@ -24,6 +25,7 @@
                         <th>Período</th>
                         <th>Días registrados</th>
                         <th>Estado</th>
+                        <th>Detalle</th>
                         <th *ngIf="esTecnico">Acciones</th>
                     </tr>
                 </thead>
@@ -37,13 +39,14 @@
                                 {{ m.estado }}
                             </span>
                         </td>
+                        <td><button class="icon-button" type="button" title="Ver menú completo" aria-label="Ver menú completo" (click)="verDetalle(m)"><mat-icon>visibility</mat-icon></button></td>
                         <td *ngIf="esTecnico">
                             <div class="action-btns">
-                                <button class="btn-secondary" *ngIf="m.estado === 'borrador'" (click)="publicar(m.id)">
+                                <button class="btn-secondary" *ngIf="m.estado === 'borrador'" type="button" (click)="pedirPublicar(m)">
                                     Publicar
                                 </button>
                                 <button class="btn-success" *ngIf="m.estado === 'publicado'"
-                                    (click)="marcarVigente(m.id)">
+                                    type="button" (click)="pedirMarcarVigente(m)">
                                     Marcar vigente
                                 </button>
                             </div>
@@ -54,22 +57,67 @@
         </div>
     </div>
 
-    <!-- Menú vigente destacado -->
-    <div class="vigente-card" *ngIf="!loading">
-        <ng-container *ngFor="let m of menus">
-            <div *ngIf="m.estado === 'vigente'" class="vigente-inner">
-                <div class="vigente-header">
-                    <mat-icon>star</mat-icon>
-                    <span>Menú vigente: {{ m.nombre }}</span>
-                </div>
-                <div class="dias-grid">
-                    <div class="dia-card" *ngFor="let dia of m.dias">
-                        <div class="dia-label">Semana {{ dia.semanaNumero }} · {{ dia.dia | titlecase }}</div>
-                        <div class="dia-desc">{{ dia.descripcionRefaccion }}</div>
-                        <div class="dia-kcal" *ngIf="dia.kcalEstimadas">{{ dia.kcalEstimadas }} kcal</div>
-                    </div>
+</div>
+
+<app-confirm-modal
+    [open]="!!menuPendiente && !!accionPendiente"
+    [title]="accionPendiente === 'publicar' ? 'Publicar menú' : 'Marcar menú vigente'"
+    [message]="accionPendiente === 'publicar' ? '¿Publicar ' + menuPendiente?.nombre + '? El menú quedará disponible para las escuelas.' : '¿Marcar ' + menuPendiente?.nombre + ' como menú vigente?'"
+    [confirmText]="actualizandoEstado ? 'Procesando...' : (accionPendiente === 'publicar' ? 'Publicar' : 'Marcar vigente')"
+    [variant]="accionPendiente === 'vigente' ? 'success' : 'primary'"
+    (confirmed)="confirmarEstado()"
+    (cancelled)="menuPendiente = null; accionPendiente = null">
+</app-confirm-modal>
+
+<div class="modal-bg" *ngIf="menuDetalle" (click)="menuDetalle = null">
+    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="menu-detail-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="menu-detail-title">{{ menuDetalle.nombre }}</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="menuDetalle = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <p>{{ menuDetalle.descripcion || 'Sin descripción' }}</p>
+            <p><strong>Vigencia:</strong> {{ menuDetalle.fechaInicio }} — {{ menuDetalle.fechaFin }} · <strong>Estado:</strong> {{ menuDetalle.estado }}</p>
+            <div class="menu-detail-day" *ngFor="let dia of menuDetalle.dias">
+                <h4>Semana {{ dia.semanaNumero }} · {{ dia.dia | titlecase }}</h4>
+                <p>{{ dia.descripcionRefaccion }}</p>
+                <p *ngIf="dia.kcalEstimadas">{{ dia.kcalEstimadas }} kcal estimadas</p>
+                <div class="table-wrap" *ngIf="dia.ingredientes?.length">
+                    <table><thead><tr><th>Ingrediente</th><th>Cantidad por estudiante</th></tr></thead>
+                        <tbody><tr *ngFor="let ingrediente of dia.ingredientes"><td>{{ ingrediente.alimento?.nombre || ingrediente.nombre || 'Alimento' }}</td><td>{{ ingrediente.cantidadPorEstudianteG }} {{ ingrediente.unidad }}</td></tr></tbody>
+                    </table>
                 </div>
             </div>
-        </ng-container>
+            <p *ngIf="!menuDetalle.dias?.length">Este menú no tiene días detallados.</p>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="menuDetalle = null">Cerrar</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="showModal" (click)="showModal = false">
+    <div class="modal modal-lg" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>Nuevo menú oficial</h3><button class="modal-close" type="button" (click)="showModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <div class="form-field"><label>Nombre</label><input [(ngModel)]="nuevo.nombre" required></div>
+            <div class="form-field"><label>Descripción</label><textarea [(ngModel)]="nuevo.descripcion" rows="2"></textarea></div>
+            <div class="form-row cols-2">
+                <div class="form-field"><label>Fecha de inicio</label><input type="date" [(ngModel)]="nuevo.fechaInicio" required></div>
+                <div class="form-field"><label>Fecha de fin</label><input type="date" [(ngModel)]="nuevo.fechaFin" required></div>
+            </div>
+            <div class="items-header"><strong>Días del menú</strong><button class="btn-secondary" type="button" (click)="agregarDia()"><mat-icon>add</mat-icon> Añadir día</button></div>
+            <section class="menu-day" *ngFor="let dia of nuevo.dias; let index = index">
+                <div class="form-row cols-3">
+                    <div class="form-field"><label>Semana</label><input type="number" min="1" max="5" [(ngModel)]="dia.semanaNumero"></div>
+                    <div class="form-field"><label>Día</label><select [(ngModel)]="dia.dia"><option *ngFor="let nombreDia of diasSemana" [value]="nombreDia">{{ nombreDia | titlecase }}</option></select></div>
+                    <div class="form-field"><label>Kcal estimadas</label><input type="number" min="1" [(ngModel)]="dia.kcalEstimadas"></div>
+                </div>
+                <div class="form-field"><label>Descripción de refacción</label><input [(ngModel)]="dia.descripcionRefaccion" required></div>
+                <div class="items-header"><span>Ingredientes</span><button class="btn-secondary" type="button" (click)="agregarIngrediente(dia)"><mat-icon>add</mat-icon> Añadir ingrediente</button></div>
+                <div class="item-row" *ngFor="let ingrediente of dia.ingredientes">
+                    <select [(ngModel)]="ingrediente.alimentoId"><option value="">Alimento</option><option *ngFor="let alimento of alimentos" [value]="alimento.id">{{ alimento.nombre }}</option></select>
+                    <input type="number" min="0.1" step="0.1" placeholder="Cantidad por estudiante" [(ngModel)]="ingrediente.cantidadPorEstudianteG">
+                    <input placeholder="Unidad" [(ngModel)]="ingrediente.unidad">
+                </div>
+                <button class="btn-danger" type="button" (click)="quitarDia(index)">Quitar día</button>
+            </section>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardar()" [disabled]="guardando || !nuevo.nombre || !nuevo.fechaInicio || !nuevo.fechaFin">{{ guardando ? 'Guardando...' : 'Crear menú' }}</button></div>
     </div>
 </div>

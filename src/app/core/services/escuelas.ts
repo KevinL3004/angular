@@ -15,6 +15,12 @@ export class EscuelasService {
   getById(id: string): Observable<ApiResponse<any>> {
     return this.http.get<ApiResponse<any>>(`${this.api}/${id}`);
   }
+  getUsuarios(id: string): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(`${this.api}/${id}/usuarios`);
+  }
+  asignarUsuario(id: string, usuarioId: string): Observable<ApiResponse<any>> {
+    return this.http.post<ApiResponse<any>>(`${this.api}/${id}/usuarios`, { usuarioId });
+  }
   crear(data: any): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(this.api, data);
   }

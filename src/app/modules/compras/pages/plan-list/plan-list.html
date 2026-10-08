@@ -6,9 +6,10 @@
         <a routerLink="proveedores" class="btn-secondary">
             <mat-icon>store</mat-icon> Proveedores
         </a>
-        <button class="btn-primary" (click)="abrirModal()">
+        <button class="btn-primary" *ngIf="puedeCrearPlan" (click)="abrirModal()">
             <mat-icon>add</mat-icon> Nuevo plan
         </button>
+        <button class="btn-secondary" *ngIf="puedeAsignar" type="button" (click)="abrirAsignacion()"><mat-icon>account_balance_wallet</mat-icon> Asignar presupuesto</button>
     </app-page-header>
 
     <!-- Selección escuela -->
@@ -43,6 +44,13 @@
 
     <app-loading *ngIf="loading"></app-loading>
 
+    <div class="card" *ngIf="!loading && asignaciones.length">
+        <h3 class="card-title">Asignaciones de presupuesto</h3>
+        <div class="table-wrap"><table><thead><tr><th>Período</th><th>Menú</th><th>Monto</th><th>Estado</th><th *ngIf="puedeAsignar">Acciones</th></tr></thead>
+            <tbody><tr *ngFor="let a of asignaciones"><td>{{ a.periodoInicio }} — {{ a.periodoFin }}</td><td>{{ a.menu?.nombre }}</td><td>Q {{ a.montoTotalQ | number:'1.2-2' }}</td><td><span class="badge" [ngClass]="estadoClass(a.estado)">{{ a.estado }}</span></td><td *ngIf="puedeAsignar"><button class="btn-danger" *ngIf="a.estado === 'activa'" type="button" (click)="pedirCerrarAsignacion(a)">Cerrar</button></td></tr></tbody>
+        </table></div>
+    </div>
+
     <div class="card" *ngIf="!loading">
         <app-empty-state *ngIf="!planes.length" icon="shopping_cart" title="Sin planes"
             subtitle="No hay planes de compra para esta escuela">
@@ -57,7 +65,8 @@
                         <th>Costo estimado</th>
                         <th>Items</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th>Detalle</th>
+                        <th *ngIf="puedeAprobarPlan">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -67,8 +76,9 @@
                         <td>{{ p.costoEstimadoQ ? 'Q ' + (p.costoEstimadoQ | number:'1.2-2') : '—' }}</td>
                         <td>{{ p.items?.length ?? 0 }}</td>
                         <td><span class="badge" [ngClass]="estadoClass(p.estado)">{{ p.estado }}</span></td>
-                        <td>
-                            <button class="btn-success" *ngIf="p.estado === 'optimizado'" (click)="aprobar(p.id)">
+                        <td><button class="icon-button" type="button" title="Ver detalle del plan" aria-label="Ver detalle del plan" (click)="verPlan(p)"><mat-icon>visibility</mat-icon></button></td>
+                        <td *ngIf="puedeAprobarPlan">
+                            <button class="btn-success" *ngIf="p.estado === 'optimizado'" type="button" (click)="pedirAprobar(p)">
                                 Aprobar
                             </button>
                         </td>
@@ -76,6 +86,61 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<app-confirm-modal
+    [open]="!!accionConfirmacion"
+    [title]="accionConfirmacion?.title ?? ''"
+    [message]="accionConfirmacion?.message ?? ''"
+    [confirmText]="procesandoAccion ? 'Procesando...' : (accionConfirmacion?.confirmText ?? 'Confirmar')"
+    [variant]="accionConfirmacion?.variant ?? 'primary'"
+    (confirmed)="confirmarAccion()"
+    (cancelled)="accionConfirmacion = null">
+</app-confirm-modal>
+
+<app-confirm-modal
+    [open]="!!mensajeModal"
+    [title]="mensajeModal?.title ?? 'Información'"
+    [message]="mensajeModal?.message ?? ''"
+    confirmText="Entendido"
+    [acknowledgement]="true"
+    (confirmed)="mensajeModal = null"
+    (cancelled)="mensajeModal = null">
+</app-confirm-modal>
+
+<div class="modal-bg" *ngIf="planDetalle" (click)="planDetalle = null">
+    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="plan-detail-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="plan-detail-title">Detalle del plan de compra</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="planDetalle = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <dl class="detail-grid">
+                <div><dt>Período</dt><dd>{{ planDetalle.semanaInicio }} — {{ planDetalle.semanaFin }}</dd></div>
+                <div><dt>Estudiantes</dt><dd>{{ planDetalle.numEstudiantes }}</dd></div>
+                <div><dt>Estado</dt><dd>{{ planDetalle.estado }}</dd></div>
+                <div><dt>Costo estimado</dt><dd>Q {{ planDetalle.costoEstimadoQ | number:'1.2-2' }}</dd></div>
+            </dl>
+            <h4>Artículos planificados</h4>
+            <div class="table-wrap" *ngIf="planDetalle.items?.length; else noPlanItems">
+                <table><thead><tr><th>Alimento</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+                    <tbody><tr *ngFor="let item of planDetalle.items"><td>{{ item.alimento?.nombre || item.nombre || 'Alimento' }}</td><td>{{ item.cantidadAComprar }} {{ item.unidad }}</td><td>Q {{ item.precioUnitarioQ | number:'1.2-2' }}</td><td>Q {{ item.cantidadAComprar * item.precioUnitarioQ | number:'1.2-2' }}</td></tr></tbody>
+                </table>
+            </div>
+            <ng-template #noPlanItems><p>El plan no tiene artículos detallados.</p></ng-template>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="planDetalle = null">Cerrar</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="showAsignacionModal" (click)="showAsignacionModal = false">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>Asignar presupuesto</h3><button class="modal-close" type="button" (click)="showAsignacionModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <div class="form-field"><label>Menú oficial</label><select [(ngModel)]="nuevaAsignacion.menuId"><option value="">Seleccionar menú</option><option *ngFor="let menu of menus" [value]="menu.id">{{ menu.nombre }}</option></select></div>
+            <div class="form-field"><label>Monto total (Q)</label><input type="number" min="1" step="0.01" [(ngModel)]="nuevaAsignacion.montoTotalQ"></div>
+            <div class="form-row cols-2"><div class="form-field"><label>Inicio del período</label><input type="date" [(ngModel)]="nuevaAsignacion.periodoInicio"></div><div class="form-field"><label>Fin del período</label><input type="date" [(ngModel)]="nuevaAsignacion.periodoFin"></div></div>
+            <div class="form-field"><label>Notas</label><textarea rows="2" [(ngModel)]="nuevaAsignacion.notas"></textarea></div>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showAsignacionModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardarAsignacion()" [disabled]="guardandoAsignacion || !nuevaAsignacion.menuId || nuevaAsignacion.montoTotalQ < 1 || !nuevaAsignacion.periodoInicio || !nuevaAsignacion.periodoFin">{{ guardandoAsignacion ? 'Guardando...' : 'Crear asignación' }}</button></div>
     </div>
 </div>
 

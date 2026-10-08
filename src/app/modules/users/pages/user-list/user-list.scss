@@ -16,6 +16,10 @@ code {
 	font-weight: 600;
 }
 
+.actions { white-space: nowrap; }
+.icon-button { border: 0; background: transparent; color: #4b5563; cursor: pointer; padding: 6px; }
+.icon-button:hover { color: #111827; }
+
 .alert {
 	align-items: center;
 }

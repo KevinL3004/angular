@@ -1,1 +1,48 @@
-<p>proveedor-list works!</p>
+<div class="page">
+    <app-page-header title="Proveedores" subtitle="Proveedores registrados por escuela">
+        <button class="btn-primary" *ngIf="puedeCrear && escuelaId" type="button" (click)="abrirCrear()"><mat-icon>add</mat-icon> Nuevo proveedor</button>
+    </app-page-header>
+
+    <div class="card" *ngIf="escuelas.length" style="padding:14px 24px;margin-bottom:16px">
+        <div class="form-field" style="margin:0;max-width:420px"><label>Escuela</label><select [(ngModel)]="escuelaId" (change)="cargar()"><option *ngFor="let escuela of escuelas" [value]="escuela.id">{{ escuela.nombre }}</option></select></div>
+    </div>
+
+    <app-loading *ngIf="loading"></app-loading>
+    <div class="card" *ngIf="!loading">
+        <div class="alert danger" *ngIf="error"><mat-icon>error_outline</mat-icon>{{ error }}</div>
+        <app-empty-state *ngIf="!proveedores.length && !error" icon="store" title="Sin proveedores" subtitle="No hay proveedores registrados para esta escuela"></app-empty-state>
+        <div class="table-wrap" *ngIf="proveedores.length">
+            <table>
+                <thead><tr><th>Nombre</th><th>Contacto</th><th>Teléfono</th><th>NIT</th><th>Productos</th><th>Estado</th><th *ngIf="puedeToggle">Acciones</th></tr></thead>
+                <tbody><tr *ngFor="let proveedor of proveedores">
+                    <td class="fw-600">{{ proveedor.nombre }}</td><td>{{ proveedor.contacto || '—' }}</td><td>{{ proveedor.telefono || '—' }}</td><td>{{ proveedor.nit || '—' }}</td><td>{{ proveedor.productosQueProvee || '—' }}</td>
+                    <td><span class="badge" [class.green]="proveedor.activo" [class.red]="!proveedor.activo">{{ proveedor.activo ? 'Activo' : 'Inactivo' }}</span></td>
+                    <td *ngIf="puedeToggle"><button class="btn-secondary" type="button" (click)="toggle(proveedor)">{{ proveedor.activo ? 'Desactivar' : 'Activar' }}</button></td>
+                </tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<app-confirm-modal
+    [open]="!!proveedorPendiente"
+    [title]="proveedorPendiente?.activo ? 'Desactivar proveedor' : 'Activar proveedor'"
+    [message]="'¿Deseas ' + (proveedorPendiente?.activo ? 'desactivar' : 'activar') + ' a ' + proveedorPendiente?.nombre + '?'"
+    [confirmText]="actualizandoEstado ? 'Procesando...' : (proveedorPendiente?.activo ? 'Desactivar' : 'Activar')"
+    [variant]="proveedorPendiente?.activo ? 'danger' : 'primary'"
+    (confirmed)="confirmarCambioEstado()"
+    (cancelled)="proveedorPendiente = null">
+</app-confirm-modal>
+
+<div class="modal-bg" *ngIf="showModal" (click)="showModal = false">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>Nuevo proveedor</h3><button class="modal-close" type="button" (click)="showModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <div class="form-field"><label>Nombre</label><input [(ngModel)]="nuevo.nombre" required></div>
+            <div class="form-row cols-2"><div class="form-field"><label>Contacto</label><input [(ngModel)]="nuevo.contacto"></div><div class="form-field"><label>Teléfono</label><input [(ngModel)]="nuevo.telefono"></div></div>
+            <div class="form-field"><label>NIT</label><input [(ngModel)]="nuevo.nit"></div>
+            <div class="form-field"><label>Productos que provee</label><textarea [(ngModel)]="nuevo.productosQueProvee" rows="3"></textarea></div>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardar()" [disabled]="guardando || !nuevo.nombre">{{ guardando ? 'Guardando...' : 'Guardar proveedor' }}</button></div>
+    </div>
+</div>

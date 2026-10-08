@@ -51,6 +51,16 @@
     </div>
 </div>
 
+<app-confirm-modal
+    [open]="!!mensajeModal"
+    [title]="mensajeModal?.title ?? 'Información'"
+    [message]="mensajeModal?.message ?? ''"
+    confirmText="Entendido"
+    [acknowledgement]="true"
+    (confirmed)="mensajeModal = null"
+    (cancelled)="mensajeModal = null">
+</app-confirm-modal>
+
 <!-- Modal nuevo alimento -->
 <div class="modal-bg" *ngIf="showModal" (click)="showModal=false">
     <div class="modal" (click)="$event.stopPropagation()">

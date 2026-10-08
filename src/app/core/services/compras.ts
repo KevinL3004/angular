@@ -19,6 +19,9 @@ export class ComprasService {
   crearAsignacion(data: any): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.api}/asignaciones`, data);
   }
+  cerrarAsignacion(id: string): Observable<ApiResponse<any>> {
+    return this.http.patch<ApiResponse<any>>(`${this.api}/asignaciones/${id}/cerrar`, {});
+  }
 
   // Proveedores
   getProveedores(escuelaId: string): Observable<ApiResponse<any[]>> {

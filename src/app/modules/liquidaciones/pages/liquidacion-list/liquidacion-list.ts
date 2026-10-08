@@ -10,11 +10,12 @@ import { AuthService } from '../../../../core/services/auth';
 import { PageHeader } from '../../../../shared/components/ui/page-header/page-header';
 import { Loading } from '../../../../shared/components/ui/loading/loading';
 import { EmptyState } from '../../../../shared/components/ui/empty-state/empty-state';
+import { ConfirmModal } from '../../../../shared/components/ui/confirm-modal/confirm-modal';
 
 @Component({
   selector: 'app-liquidacion-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, PageHeader, Loading, EmptyState],
+  imports: [CommonModule, FormsModule, MatIconModule, PageHeader, Loading, EmptyState, ConfirmModal],
   templateUrl: './liquidacion-list.html',
   styleUrls: ['./liquidacion-list.scss'],
 })
@@ -24,10 +25,21 @@ export class LiquidacionList implements OnInit {
   asignaciones: any[] = [];
   escuelaId = '';
   loading = true;
+  error = '';
   showModal = false;
+  showObservarModal = false;
+  liquidacionDetalle: any = null;
+  liquidacionPendiente: any = null;
+  accionPendiente: 'enviar' | 'aprobar' | null = null;
+  actualizandoEstado = false;
+  guardandoObservacion = false;
+  mensajeModal: { title: string; message: string } | null = null;
+  observandoId = '';
+  observaciones = '';
   guardando = false;
   esTecnico = false;
   esDirectora = false;
+  puedeGenerar = false;
 
   nueva = { escuelaId: '', asignacionId: '', observaciones: '' };
 
@@ -41,6 +53,7 @@ export class LiquidacionList implements OnInit {
     const rol = this.auth.rol();
     this.esTecnico = rol === 'tecnico_mineduc';
     this.esDirectora = rol === 'director' || rol === 'secretaria_opf';
+    this.puedeGenerar = ['tecnico_mineduc', 'director', 'secretaria_opf'].includes(rol ?? '');
   }
 
   ngOnInit(): void {
@@ -57,6 +70,7 @@ export class LiquidacionList implements OnInit {
   cargar(): void {
     if (!this.escuelaId) return;
     this.loading = true;
+    this.error = '';
 
     this.compSvc.getAsignaciones(this.escuelaId).subscribe(r => {
       this.asignaciones = r.data ?? [];
@@ -77,22 +91,69 @@ export class LiquidacionList implements OnInit {
   }
 
   generar(): void {
-    if (!this.nueva.asignacionId) { alert('Selecciona una asignación'); return; }
+    if (!this.nueva.asignacionId) {
+      this.mostrarMensaje('Selecciona una asignación de presupuesto antes de generar la liquidación.');
+      return;
+    }
     this.guardando = true;
     this.svc.generar(this.nueva).pipe(
       finalize(() => { this.guardando = false; this.cdr.markForCheck(); })
     ).subscribe({
       next: () => { this.showModal = false; this.cargar(); },
-      error: (e) => { alert(e?.error?.mensaje ?? 'Error al generar'); },
+      error: e => { this.mostrarMensaje(e?.error?.mensaje ?? 'No se pudo generar la liquidación'); },
     });
   }
 
-  enviar(id: string): void {
-    this.svc.enviar(id).subscribe({ next: () => this.cargar() });
+  pedirEnvio(liquidacion: any): void {
+    this.liquidacionPendiente = liquidacion;
+    this.accionPendiente = 'enviar';
   }
 
-  aprobar(id: string): void {
-    this.svc.aprobar(id).subscribe({ next: () => this.cargar() });
+  pedirAprobacion(liquidacion: any): void {
+    this.liquidacionPendiente = liquidacion;
+    this.accionPendiente = 'aprobar';
+  }
+
+  confirmarEstado(): void {
+    if (!this.liquidacionPendiente || !this.accionPendiente || this.actualizandoEstado) return;
+    const request = this.accionPendiente === 'enviar'
+      ? this.svc.enviar(this.liquidacionPendiente.id)
+      : this.svc.aprobar(this.liquidacionPendiente.id);
+    this.actualizandoEstado = true;
+    request.pipe(finalize(() => {
+      this.actualizandoEstado = false;
+      this.cdr.markForCheck();
+    })).subscribe({
+      next: () => { this.liquidacionPendiente = null; this.accionPendiente = null; this.cargar(); },
+      error: error => { this.error = error?.error?.mensaje ?? 'No se pudo actualizar la liquidación'; },
+    });
+  }
+
+  verDetalle(liquidacion: any): void {
+    this.liquidacionDetalle = liquidacion;
+  }
+
+  abrirObservar(id: string): void {
+    this.observandoId = id;
+    this.observaciones = '';
+    this.showObservarModal = true;
+  }
+
+  guardarObservacion(): void {
+    if (!this.observaciones.trim()) return;
+    if (this.guardandoObservacion) return;
+    this.guardandoObservacion = true;
+    this.svc.observar(this.observandoId, this.observaciones.trim()).pipe(finalize(() => {
+      this.guardandoObservacion = false;
+      this.cdr.markForCheck();
+    })).subscribe({
+      next: () => { this.showObservarModal = false; this.cargar(); },
+      error: error => { this.mostrarMensaje(error?.error?.mensaje ?? 'No se pudo observar la liquidación'); },
+    });
+  }
+
+  mostrarMensaje(message: string): void {
+    this.mensajeModal = { title: 'No se pudo completar', message };
   }
 
   estadoClass(e: string): string {

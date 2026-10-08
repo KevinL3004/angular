@@ -1,1 +1,81 @@
-<p>compra-list works!</p>
+<div class="page">
+    <app-page-header title="Compras realizadas" subtitle="Registro y verificación de compras por escuela">
+        <button class="btn-primary" *ngIf="puedeRegistrar && escuelaId" type="button" (click)="abrirRegistro()"><mat-icon>add</mat-icon> Registrar compra</button>
+    </app-page-header>
+
+    <div class="card" *ngIf="escuelas.length" style="padding:14px 24px;margin-bottom:16px"><div class="form-field" style="margin:0;max-width:420px"><label>Escuela</label><select [(ngModel)]="escuelaId" (change)="cargar()"><option *ngFor="let escuela of escuelas" [value]="escuela.id">{{ escuela.nombre }}</option></select></div></div>
+
+    <app-loading *ngIf="loading"></app-loading>
+    <div class="card" *ngIf="!loading">
+        <div class="alert danger" *ngIf="error"><mat-icon>error_outline</mat-icon>{{ error }}</div>
+        <app-empty-state *ngIf="!compras.length && !error" icon="receipt" title="Sin compras registradas" subtitle="Todavía no se han registrado compras para esta escuela"></app-empty-state>
+        <div class="table-wrap" *ngIf="compras.length">
+            <table><thead><tr><th>Fecha</th><th>Plan</th><th>Proveedor</th><th>Factura</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody><tr *ngFor="let compra of compras">
+                    <td>{{ compra.fechaCompra | date:'dd/MM/yyyy' }}</td><td>{{ compra.plan?.semanaInicio }} — {{ compra.plan?.semanaFin }}</td><td>{{ compra.proveedor?.nombre || '—' }}</td><td>{{ compra.numeroFactura || '—' }}</td><td>Q {{ compra.totalGastadoQ | number:'1.2-2' }}</td><td><span class="badge" [class.green]="compra.estado === 'verificada'" [class.red]="compra.estado === 'rechazada'" [class.yellow]="compra.estado === 'registrada'">{{ compra.estado }}</span></td>
+                    <td><div class="action-btns"><button class="icon-button" type="button" title="Ver detalle" [attr.aria-label]="'Ver detalle de compra ' + compra.numeroFactura" (click)="verDetalle(compra)"><mat-icon>visibility</mat-icon></button><ng-container *ngIf="puedeRevisar && compra.estado === 'registrada'"><button class="btn-success" type="button" (click)="cambiarEstado(compra, 'verificar')">Verificar</button><button class="btn-danger" type="button" (click)="cambiarEstado(compra, 'rechazar')">Rechazar</button></ng-container></div></td>
+                </tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<app-confirm-modal
+    [open]="!!compraPendiente && !!accionPendiente"
+    [title]="accionPendiente === 'verificar' ? 'Verificar compra' : 'Rechazar compra'"
+    [message]="'¿Confirmas ' + accionPendiente + ' la compra ' + (compraPendiente?.numeroFactura || 'sin número de factura') + ' por Q ' + (compraPendiente?.totalGastadoQ | number:'1.2-2') + '?'"
+    [confirmText]="actualizandoEstado ? 'Procesando...' : (accionPendiente === 'verificar' ? 'Verificar' : 'Rechazar')"
+    [variant]="accionPendiente === 'rechazar' ? 'danger' : 'success'"
+    (confirmed)="confirmarCambioEstado()"
+    (cancelled)="compraPendiente = null; accionPendiente = null">
+</app-confirm-modal>
+
+<div class="modal-bg" *ngIf="compraDetalle" (click)="compraDetalle = null">
+    <section class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="compra-detail-title" (click)="$event.stopPropagation()">
+        <header class="modal-head"><h3 id="compra-detail-title">Detalle de compra</h3><button class="modal-close" type="button" aria-label="Cerrar" (click)="compraDetalle = null"><mat-icon>close</mat-icon></button></header>
+        <div class="modal-body">
+            <dl class="detail-grid">
+                <div><dt>Fecha</dt><dd>{{ compraDetalle.fechaCompra | date:'dd/MM/yyyy' }}</dd></div>
+                <div><dt>Factura</dt><dd>{{ compraDetalle.numeroFactura || 'Sin número' }}</dd></div>
+                <div><dt>Proveedor</dt><dd>{{ compraDetalle.proveedor?.nombre || 'Sin proveedor' }}</dd></div>
+                <div><dt>Plan</dt><dd>{{ compraDetalle.plan?.semanaInicio }} — {{ compraDetalle.plan?.semanaFin }}</dd></div>
+                <div><dt>Estado</dt><dd>{{ compraDetalle.estado }}</dd></div>
+                <div><dt>Total</dt><dd>Q {{ compraDetalle.totalGastadoQ | number:'1.2-2' }}</dd></div>
+            </dl>
+            <p *ngIf="compraDetalle.observaciones"><strong>Observaciones:</strong> {{ compraDetalle.observaciones }}</p>
+            <h4>Artículos</h4>
+            <div class="table-wrap" *ngIf="compraDetalle.items?.length; else noItems">
+                <table><thead><tr><th>Artículo</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+                    <tbody><tr *ngFor="let item of compraDetalle.items"><td>{{ item.alimento?.nombre || item.nombre || 'Artículo' }}</td><td>{{ item.cantidadComprada }} {{ item.unidad }}</td><td>Q {{ item.precioUnitarioQ | number:'1.2-2' }}</td><td>Q {{ item.cantidadComprada * item.precioUnitarioQ | number:'1.2-2' }}</td></tr></tbody>
+                </table>
+            </div>
+            <ng-template #noItems><p>Esta compra no incluye artículos detallados.</p></ng-template>
+        </div>
+        <footer class="modal-foot"><button class="btn-secondary" type="button" (click)="compraDetalle = null">Cerrar</button></footer>
+    </section>
+</div>
+
+<div class="modal-bg" *ngIf="showModal" (click)="showModal = false">
+    <div class="modal modal-lg" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>Registrar compra</h3><button class="modal-close" type="button" (click)="showModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <div class="form-row cols-2">
+                <div class="form-field"><label>Plan de compra</label><select [(ngModel)]="nueva.planId" (change)="seleccionarPlan()"><option value="">Seleccionar plan</option><option *ngFor="let plan of planes" [value]="plan.id">{{ plan.semanaInicio }} — {{ plan.semanaFin }} ({{ plan.estado }})</option></select></div>
+                <div class="form-field"><label>Proveedor</label><select [(ngModel)]="nueva.proveedorId"><option value="">Sin proveedor</option><option *ngFor="let proveedor of proveedores" [value]="proveedor.id">{{ proveedor.nombre }}</option></select></div>
+                <div class="form-field"><label>Fecha de compra</label><input type="date" [(ngModel)]="nueva.fechaCompra"></div>
+                <div class="form-field"><label>Número de factura</label><input [(ngModel)]="nueva.numeroFactura"></div>
+            </div>
+            <div class="items-header"><strong>Detalle de compra</strong><button class="btn-secondary" type="button" (click)="agregarItem()"><mat-icon>add</mat-icon> Añadir artículo</button></div>
+            <div class="item-row" *ngFor="let item of nueva.items; let index = index">
+                <select [(ngModel)]="item.alimentoId"><option value="">Alimento</option><option *ngFor="let alimento of alimentos" [value]="alimento.id">{{ alimento.nombre }}</option></select>
+                <input type="number" min="0.001" step="0.001" placeholder="Cantidad" [(ngModel)]="item.cantidadComprada">
+                <input placeholder="Unidad" [(ngModel)]="item.unidad">
+                <input type="number" min="0" step="0.01" placeholder="Precio unitario Q" [(ngModel)]="item.precioUnitarioQ">
+                <button class="icon-button" type="button" title="Quitar artículo" (click)="quitarItem(index)"><mat-icon>delete</mat-icon></button>
+            </div>
+            <div class="total-row">Total calculado <strong>Q {{ total() | number:'1.2-2' }}</strong></div>
+            <div class="form-field"><label>Observaciones</label><textarea rows="2" [(ngModel)]="nueva.observaciones"></textarea></div>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardar()" [disabled]="guardando || !formularioValido()">{{ guardando ? 'Guardando...' : 'Guardar compra' }}</button></div>
+    </div>
+</div>

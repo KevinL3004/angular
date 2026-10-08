@@ -8,12 +8,13 @@ import { AuthService } from '../../../../core/services/auth';
 import { PageHeader } from '../../../../shared/components/ui/page-header/page-header';
 import { Loading } from '../../../../shared/components/ui/loading/loading';
 import { EmptyState } from '../../../../shared/components/ui/empty-state/empty-state';
+import { ConfirmModal } from '../../../../shared/components/ui/confirm-modal/confirm-modal';
 import { finalize } from 'rxjs';
 
 @Component({
   selector: 'app-inventario-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, PageHeader, Loading, EmptyState],
+  imports: [CommonModule, FormsModule, MatIconModule, PageHeader, Loading, EmptyState, ConfirmModal],
   templateUrl: './inventario-list.html',
   styleUrls: ['./inventario-list.scss'],
 })
@@ -24,6 +25,13 @@ export class InventarioList implements OnInit {
   filtro = '';
   loading = false;
   showModal = false;
+  showStockModal = false;
+  stockItem: any = null;
+  nuevoStockMinimo = 0;
+  guardandoMovimiento = false;
+  guardandoStock = false;
+  mensajeModal: { title: string; message: string } | null = null;
+  puedeMover = false;
   mov = { tipo: 'ingreso', cantidad: 0, motivo: '', alimentoId: '', escuelaId: '' };
 
   constructor(
@@ -34,6 +42,7 @@ export class InventarioList implements OnInit {
   ) { }
 
   ngOnInit(): void {
+    this.puedeMover = ['tecnico_mineduc', 'director', 'docente_encargado'].includes(this.auth.rol() ?? '');
     this.escSvc.getAll().subscribe({
       next: r => {
         this.escuelas = r.data ?? [];
@@ -99,16 +108,47 @@ export class InventarioList implements OnInit {
   }
 
   guardarMov(): void {
-    this.svc.registrarMovimiento(this.mov).subscribe({
+    if (this.guardandoMovimiento) return;
+    this.guardandoMovimiento = true;
+    this.svc.registrarMovimiento(this.mov).pipe(finalize(() => {
+      this.guardandoMovimiento = false;
+      this.cdr.markForCheck();
+    })).subscribe({
       next: () => {
         this.showModal = false;
         this.cdr.markForCheck();
         this.cargar();
       },
       error: (e) => {
-        alert(e?.error?.mensaje ?? 'Error al registrar');
+        this.mostrarMensaje(e?.error?.mensaje ?? 'No se pudo registrar el movimiento');
         this.cdr.markForCheck();
       },
     });
+  }
+
+  abrirStockMinimo(item: any): void {
+    this.stockItem = item;
+    this.nuevoStockMinimo = Number(item.stockMinimo);
+    this.showStockModal = true;
+  }
+
+  guardarStockMinimo(): void {
+    if (!this.stockItem || this.nuevoStockMinimo < 0 || this.guardandoStock) return;
+    this.guardandoStock = true;
+    this.svc.actualizarStockMinimo({
+      escuelaId: this.escuelaId,
+      alimentoId: this.stockItem.alimento.id,
+      stockMinimo: Number(this.nuevoStockMinimo),
+    }).pipe(finalize(() => {
+      this.guardandoStock = false;
+      this.cdr.markForCheck();
+    })).subscribe({
+      next: () => { this.showStockModal = false; this.cargar(); },
+      error: error => { this.mostrarMensaje(error?.error?.mensaje ?? 'No se pudo actualizar el stock mínimo'); },
+    });
+  }
+
+  mostrarMensaje(message: string): void {
+    this.mensajeModal = { title: 'No se pudo completar', message };
   }
 }

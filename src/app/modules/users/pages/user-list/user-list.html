@@ -1,5 +1,6 @@
 <div class="page">
 	<app-page-header title="Usuarios" subtitle="Cuentas registradas en el sistema">
+		<button class="btn-primary" type="button" (click)="abrirCrear()"><mat-icon>add</mat-icon> Nuevo usuario</button>
 		<button class="btn-secondary refresh-button" type="button" (click)="cargar()" [disabled]="loading" aria-label="Actualizar usuarios" title="Actualizar">
 			<mat-icon>refresh</mat-icon>
 		</button>
@@ -31,6 +32,7 @@
 						<th>Rol</th>
 						<th>Estado</th>
 						<th>Último acceso</th>
+						<th>Acciones</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -45,9 +47,37 @@
 							</span>
 						</td>
 						<td>{{ usuario.ultimoAcceso ? (usuario.ultimoAcceso | date:'short') : 'Nunca' }}</td>
+						<td class="actions">
+							<button class="icon-button" type="button" title="Editar usuario" aria-label="Editar usuario" (click)="abrirEditar(usuario)"><mat-icon>edit</mat-icon></button>
+							<button class="icon-button" type="button" [title]="usuario.activo ? 'Desactivar usuario' : 'Activar usuario'" (click)="cambiarEstado(usuario)"><mat-icon>{{ usuario.activo ? 'person_off' : 'person' }}</mat-icon></button>
+						</td>
 					</tr>
 				</tbody>
 			</table>
 		</div>
+	</div>
+</div>
+
+<app-confirm-modal
+	[open]="!!usuarioPendiente"
+	[title]="usuarioPendiente?.activo ? 'Desactivar usuario' : 'Activar usuario'"
+	[message]="'¿Deseas ' + (usuarioPendiente?.activo ? 'desactivar' : 'activar') + ' a ' + usuarioPendiente?.nombreCompleto + '?'"
+	[confirmText]="confirmandoEstado ? 'Procesando...' : (usuarioPendiente?.activo ? 'Desactivar' : 'Activar')"
+	[variant]="usuarioPendiente?.activo ? 'danger' : 'primary'"
+	(confirmed)="confirmarCambioEstado()"
+	(cancelled)="usuarioPendiente = null">
+</app-confirm-modal>
+
+<div class="modal-bg" *ngIf="showModal" (click)="showModal = false">
+	<div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+		<div class="modal-head"><h3>{{ editando ? 'Editar usuario' : 'Nuevo usuario' }}</h3><button class="modal-close" type="button" (click)="showModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+		<div class="modal-body">
+			<div class="form-field"><label>Nombre de usuario</label><input [(ngModel)]="formulario.username" [readonly]="!!editando" [disabled]="!!editando" minlength="4" required></div>
+			<div class="form-field"><label>Nombre completo</label><input [(ngModel)]="formulario.nombreCompleto" required></div>
+			<div class="form-field"><label>Correo electrónico</label><input type="email" [(ngModel)]="formulario.correo"></div>
+			<div class="form-field"><label>Rol</label><select [(ngModel)]="formulario.rol"><option *ngFor="let role of roles" [value]="role">{{ rolLabels[role] }}</option></select></div>
+			<div class="form-field"><label>{{ editando ? 'Nueva contraseña (opcional)' : 'Contraseña' }}</label><input type="password" [(ngModel)]="formulario.password" [required]="!editando" minlength="8" autocomplete="new-password"></div>
+		</div>
+		<div class="modal-foot"><button class="btn-secondary" type="button" (click)="showModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardar()" [disabled]="guardando || !formulario.nombreCompleto || !formulario.username || (!editando && formulario.password.length < 8)">{{ guardando ? 'Guardando...' : 'Guardar' }}</button></div>
 	</div>
 </div>

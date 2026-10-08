@@ -32,7 +32,7 @@
                         <th>Stock mínimo</th>
                         <th>Nivel</th>
                         <th>Estado</th>
-                        <th></th>
+                        <th *ngIf="puedeMover"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,7 +55,8 @@
                                 {{ nivelLabel(item) }}
                             </span>
                         </td>
-                        <td>
+                        <td *ngIf="puedeMover">
+                            <button class="icon-button" type="button" title="Editar stock mínimo" aria-label="Editar stock mínimo" (click)="abrirStockMinimo(item)"><mat-icon>tune</mat-icon></button>
                             <button class="btn-secondary" (click)="abrirModal(item)">
                                 <mat-icon>add</mat-icon> Movimiento
                             </button>
@@ -64,6 +65,17 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<div class="modal-bg" *ngIf="showStockModal" (click)="showStockModal = false">
+    <div class="modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="modal-head"><h3>Stock mínimo</h3><button class="modal-close" type="button" (click)="showStockModal = false" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        <div class="modal-body">
+            <p>{{ stockItem?.alimento?.nombre }}</p>
+            <div class="form-field"><label>Nuevo stock mínimo ({{ stockItem?.alimento?.unidadInventario }})</label><input type="number" min="0" step="0.001" [(ngModel)]="nuevoStockMinimo"></div>
+        </div>
+        <div class="modal-foot"><button class="btn-secondary" type="button" (click)="showStockModal = false">Cancelar</button><button class="btn-primary" type="button" (click)="guardarStockMinimo()" [disabled]="guardandoStock || nuevoStockMinimo < 0">{{ guardandoStock ? 'Guardando...' : 'Guardar stock' }}</button></div>
     </div>
 </div>
 
@@ -97,7 +109,17 @@
         </div>
         <div class="modal-foot">
             <button class="btn-secondary" (click)="showModal=false">Cancelar</button>
-            <button class="btn-primary" (click)="guardarMov()">Guardar</button>
+            <button class="btn-primary" type="button" (click)="guardarMov()" [disabled]="guardandoMovimiento || mov.cantidad <= 0 || !mov.motivo.trim()">{{ guardandoMovimiento ? 'Guardando...' : 'Guardar' }}</button>
         </div>
     </div>
 </div>
+
+<app-confirm-modal
+    [open]="!!mensajeModal"
+    [title]="mensajeModal?.title ?? 'Información'"
+    [message]="mensajeModal?.message ?? ''"
+    confirmText="Entendido"
+    [acknowledgement]="true"
+    (confirmed)="mensajeModal = null"
+    (cancelled)="mensajeModal = null">
+</app-confirm-modal>
