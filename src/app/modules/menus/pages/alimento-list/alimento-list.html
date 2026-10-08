@@ -1,1 +1,106 @@
-<p>alimento-list works!</p>
+<div class="page">
+    <app-page-header title="Catálogo de alimentos" subtitle="Alimentos registrados con información nutricional INCAP">
+        <a routerLink="/menus" class="btn-secondary">
+            <mat-icon>arrow_back</mat-icon> Menús
+        </a>
+        <button class="btn-primary" *ngIf="puedeCrear" (click)="showModal=true">
+            <mat-icon>add</mat-icon> Nuevo alimento
+        </button>
+    </app-page-header>
+
+    <div class="card" style="padding:14px 24px;margin-bottom:16px">
+        <input type="text" [(ngModel)]="filtro" placeholder="Buscar por nombre o grupo..."
+            style="width:100%;border:1.5px solid #d1d5db;border-radius:7px;padding:8px 12px;font-size:13px;outline:none;font-family:inherit">
+    </div>
+
+    <app-loading *ngIf="loading"></app-loading>
+
+    <div class="card" *ngIf="!loading">
+        <app-empty-state *ngIf="!alimentos.length" icon="set_meal" title="Sin alimentos"
+            subtitle="No hay alimentos en el catálogo">
+        </app-empty-state>
+
+        <div class="table-wrap" *ngIf="alimentos.length">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Grupo</th>
+                        <th>Kcal / 100g</th>
+                        <th>Proteína g</th>
+                        <th>Carb g</th>
+                        <th>Grasa g</th>
+                        <th>Precio ref. Q</th>
+                        <th>Unidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let a of alimentosFiltrados">
+                        <td class="fw-600">{{ a.nombre }}</td>
+                        <td><span class="badge blue">{{ a.grupo }}</span></td>
+                        <td>{{ a.kcalPor100g }}</td>
+                        <td>{{ a.proteinaG }}</td>
+                        <td>{{ a.carbohidratosG }}</td>
+                        <td>{{ a.grasasG }}</td>
+                        <td>{{ a.precioRefQ ? 'Q ' + a.precioRefQ : '—' }}</td>
+                        <td>{{ a.unidadInventario }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal nuevo alimento -->
+<div class="modal-bg" *ngIf="showModal" (click)="showModal=false">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+            <h3>Nuevo alimento</h3>
+            <button class="modal-close" (click)="showModal=false"><mat-icon>close</mat-icon></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row cols-2">
+                <div class="form-field" style="grid-column:1/-1">
+                    <label>Nombre</label>
+                    <input type="text" [(ngModel)]="nuevo.nombre" placeholder="Ej. Frijol negro cocido">
+                </div>
+                <div class="form-field">
+                    <label>Grupo</label>
+                    <select [(ngModel)]="nuevo.grupo">
+                        <option *ngFor="let g of grupos" [value]="g">{{ g }}</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Unidad de inventario</label>
+                    <input type="text" [(ngModel)]="nuevo.unidadInventario" placeholder="lb, kg, L...">
+                </div>
+                <div class="form-field">
+                    <label>Kcal por 100g</label>
+                    <input type="number" [(ngModel)]="nuevo.kcalPor100g" min="0">
+                </div>
+                <div class="form-field">
+                    <label>Proteína (g)</label>
+                    <input type="number" [(ngModel)]="nuevo.proteinaG" min="0">
+                </div>
+                <div class="form-field">
+                    <label>Carbohidratos (g)</label>
+                    <input type="number" [(ngModel)]="nuevo.carbohidratosG" min="0">
+                </div>
+                <div class="form-field">
+                    <label>Grasas (g)</label>
+                    <input type="number" [(ngModel)]="nuevo.grasasG" min="0">
+                </div>
+                <div class="form-field">
+                    <label>Precio referencia (Q)</label>
+                    <input type="number" [(ngModel)]="nuevo.precioRefQ" min="0" step="0.01">
+                </div>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" (click)="showModal=false">Cancelar</button>
+            <button class="btn-primary" (click)="guardar()" [disabled]="guardando">
+                {{ guardando ? 'Guardando...' : 'Guardar alimento' }}
+            </button>
+        </div>
+    </div>
+</div>

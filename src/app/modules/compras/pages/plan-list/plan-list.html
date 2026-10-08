@@ -1,1 +1,144 @@
-<p>plan-list works!</p>
+<div class="page">
+    <app-page-header title="Plan de compras" subtitle="Planificación y seguimiento de compras de insumos">
+        <a routerLink="realizadas" class="btn-secondary">
+            <mat-icon>receipt</mat-icon> Compras realizadas
+        </a>
+        <a routerLink="proveedores" class="btn-secondary">
+            <mat-icon>store</mat-icon> Proveedores
+        </a>
+        <button class="btn-primary" (click)="abrirModal()">
+            <mat-icon>add</mat-icon> Nuevo plan
+        </button>
+    </app-page-header>
+
+    <!-- Selección escuela -->
+    <div class="card" style="padding:14px 24px;margin-bottom:16px">
+        <div class="form-field" style="margin:0;max-width:400px">
+            <label>Escuela</label>
+            <select [(ngModel)]="escuelaId" (change)="cargar()">
+                <option *ngFor="let e of escuelas" [value]="e.id">{{ e.nombre }}</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Resumen presupuestario -->
+    <div class="resumen-row" *ngIf="resumen">
+        <div class="resumen-card">
+            <div class="r-label">Asignado</div>
+            <div class="r-value">Q {{ resumen.asignado | number:'1.2-2' }}</div>
+        </div>
+        <div class="resumen-card warn">
+            <div class="r-label">Gastado</div>
+            <div class="r-value">Q {{ resumen.gastado | number:'1.2-2' }}</div>
+        </div>
+        <div class="resumen-card ok">
+            <div class="r-label">Saldo</div>
+            <div class="r-value">Q {{ resumen.saldo | number:'1.2-2' }}</div>
+        </div>
+        <div class="resumen-card info">
+            <div class="r-label">Ejecución</div>
+            <div class="r-value">{{ resumen.porcentaje_ejecutado }}%</div>
+        </div>
+    </div>
+
+    <app-loading *ngIf="loading"></app-loading>
+
+    <div class="card" *ngIf="!loading">
+        <app-empty-state *ngIf="!planes.length" icon="shopping_cart" title="Sin planes"
+            subtitle="No hay planes de compra para esta escuela">
+        </app-empty-state>
+
+        <div class="table-wrap" *ngIf="planes.length">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Semana</th>
+                        <th>Estudiantes</th>
+                        <th>Costo estimado</th>
+                        <th>Items</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let p of planes">
+                        <td>{{ p.semanaInicio }} — {{ p.semanaFin }}</td>
+                        <td>{{ p.numEstudiantes }}</td>
+                        <td>{{ p.costoEstimadoQ ? 'Q ' + (p.costoEstimadoQ | number:'1.2-2') : '—' }}</td>
+                        <td>{{ p.items?.length ?? 0 }}</td>
+                        <td><span class="badge" [ngClass]="estadoClass(p.estado)">{{ p.estado }}</span></td>
+                        <td>
+                            <button class="btn-success" *ngIf="p.estado === 'optimizado'" (click)="aprobar(p.id)">
+                                Aprobar
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal nuevo plan -->
+<div class="modal-bg" *ngIf="showModal" (click)="showModal=false">
+    <div class="modal modal-lg" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+            <h3>Nuevo plan de compra</h3>
+            <button class="modal-close" (click)="showModal=false"><mat-icon>close</mat-icon></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row cols-2">
+                <div class="form-field">
+                    <label>Semana inicio</label>
+                    <input type="date" [(ngModel)]="plan.semanaInicio">
+                </div>
+                <div class="form-field">
+                    <label>Semana fin</label>
+                    <input type="date" [(ngModel)]="plan.semanaFin">
+                </div>
+                <div class="form-field">
+                    <label>Número de estudiantes</label>
+                    <input type="number" [(ngModel)]="plan.numEstudiantes" min="1">
+                </div>
+            </div>
+
+            <div class="items-header">
+                <span class="items-title">Alimentos a comprar</span>
+                <button class="btn-secondary" type="button" (click)="agregarItem()">
+                    <mat-icon>add</mat-icon> Agregar
+                </button>
+            </div>
+
+            <div *ngFor="let item of plan.items; let i = index" class="item-row">
+                <div class="form-field" style="flex:2;margin:0">
+                    <select [(ngModel)]="item.alimentoId">
+                        <option value="">Seleccionar alimento</option>
+                        <option *ngFor="let a of alimentos" [value]="a.id">{{ a.nombre }}</option>
+                    </select>
+                </div>
+                <div class="form-field" style="flex:1;margin:0">
+                    <input type="number" [(ngModel)]="item.cantidadAComprar" placeholder="Cantidad" min="0">
+                </div>
+                <div class="form-field" style="flex:1;margin:0">
+                    <input type="text" [(ngModel)]="item.unidad" placeholder="Unidad">
+                </div>
+                <div class="form-field" style="flex:1;margin:0">
+                    <input type="number" [(ngModel)]="item.precioUnitarioQ" placeholder="Precio Q" min="0" step="0.01">
+                </div>
+                <button class="btn-danger" type="button" (click)="quitarItem(i)" style="height:38px;margin-top:auto">
+                    <mat-icon>delete</mat-icon>
+                </button>
+            </div>
+
+            <div class="total-row">
+                Total estimado: <strong>Q {{ totalEstimado() | number:'1.2-2' }}</strong>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" (click)="showModal=false">Cancelar</button>
+            <button class="btn-primary" (click)="guardar()" [disabled]="guardando">
+                {{ guardando ? 'Guardando...' : 'Crear plan' }}
+            </button>
+        </div>
+    </div>
+</div>

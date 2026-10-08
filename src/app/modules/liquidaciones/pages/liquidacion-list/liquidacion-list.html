@@ -1,1 +1,105 @@
-<p>liquidacion-list works!</p>
+<div class="page">
+    <app-page-header title="Liquidaciones" subtitle="Rendición de cuentas del programa alimentario">
+        <button class="btn-primary" *ngIf="esDirectora" (click)="abrirModal()">
+            <mat-icon>add</mat-icon> Generar liquidación
+        </button>
+    </app-page-header>
+
+    <div class="card" style="padding:14px 24px;margin-bottom:16px">
+        <div class="form-field" style="margin:0;max-width:400px">
+            <label>Escuela</label>
+            <select [(ngModel)]="escuelaId" (change)="cargar()">
+                <option *ngFor="let e of escuelas" [value]="e.id">{{ e.nombre }}</option>
+            </select>
+        </div>
+    </div>
+
+    <app-loading *ngIf="loading"></app-loading>
+
+    <div class="card" *ngIf="!loading">
+        <app-empty-state *ngIf="!liquidaciones.length" icon="receipt_long" title="Sin liquidaciones"
+            subtitle="No hay liquidaciones generadas para esta escuela">
+        </app-empty-state>
+
+        <div class="table-wrap" *ngIf="liquidaciones.length">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Período</th>
+                        <th>Asignado</th>
+                        <th>Gastado</th>
+                        <th>Saldo</th>
+                        <th>Ejecución</th>
+                        <th>Estado</th>
+                        <th>Enviada</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let l of liquidaciones">
+                        <td class="fw-600">{{ l.periodoInicio }} — {{ l.periodoFin }}</td>
+                        <td>Q {{ l.totalAsignadoQ | number:'1.2-2' }}</td>
+                        <td>Q {{ l.totalGastadoQ | number:'1.2-2' }}</td>
+                        <td [class.text-green]="l.saldoQ >= 0" [class.text-red]="l.saldoQ < 0">
+                            Q {{ l.saldoQ | number:'1.2-2' }}
+                        </td>
+                        <td>
+                            <div class="pct-bar">
+                                <div class="pct-fill" [style.width.%]="pctEjecucion(l)"></div>
+                            </div>
+                            <span class="pct-label">{{ pctEjecucion(l) }}%</span>
+                        </td>
+                        <td>
+                            <span class="badge" [ngClass]="estadoClass(l.estado)">{{ l.estado }}</span>
+                        </td>
+                        <td class="text-muted">{{ l.enviadoEn ? (l.enviadoEn | date:'dd/MM/yyyy') : '—' }}</td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn-secondary" *ngIf="l.estado === 'borrador' && esDirectora"
+                                    (click)="enviar(l.id)">
+                                    Enviar
+                                </button>
+                                <button class="btn-success" *ngIf="l.estado === 'enviada' && esTecnico"
+                                    (click)="aprobar(l.id)">
+                                    Aprobar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal generar -->
+<div class="modal-bg" *ngIf="showModal" (click)="showModal=false">
+    <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+            <h3>Generar liquidación</h3>
+            <button class="modal-close" (click)="showModal=false"><mat-icon>close</mat-icon></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-field">
+                <label>Asignación de presupuesto</label>
+                <select [(ngModel)]="nueva.asignacionId">
+                    <option value="">Seleccionar asignación</option>
+                    <option *ngFor="let a of asignaciones" [value]="a.id">
+                        {{ a.periodoInicio }} — {{ a.periodoFin }} (Q {{ a.montoTotalQ }})
+                    </option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label>Observaciones (opcional)</label>
+                <textarea [(ngModel)]="nueva.observaciones" rows="3"
+                    placeholder="Notas adicionales para la liquidación..."></textarea>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" (click)="showModal=false">Cancelar</button>
+            <button class="btn-primary" (click)="generar()" [disabled]="guardando">
+                {{ guardando ? 'Generando...' : 'Generar liquidación' }}
+            </button>
+        </div>
+    </div>
+</div>
